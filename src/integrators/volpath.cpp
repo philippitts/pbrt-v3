@@ -45,7 +45,7 @@ STAT_COUNTER("Integrator/Volume interactions", volumeInteractions);
 STAT_COUNTER("Integrator/Surface interactions", surfaceInteractions);
 
 // VolPathIntegrator Method Definitions
-Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
+IntegrationResult VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                                Sampler &sampler, MemoryArena &arena,
                                int depth) const {
     ProfilePhase p(Prof::SamplerIntegratorLi);
@@ -156,7 +156,7 @@ Spectrum VolPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         }
     }
     ReportValue(pathLength, bounces);
-    return L;
+    return IntegrationResult(L);
 }
 
 VolPathIntegrator *CreateVolPathIntegrator(

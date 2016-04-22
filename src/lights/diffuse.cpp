@@ -50,12 +50,18 @@ Spectrum DiffuseAreaLight::Power() const { return Lemit * area * Pi; }
 
 Spectrum DiffuseAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                      Vector3f *wi, Float *pdf,
-                                     VisibilityTester *vis) const {
+                                     VisibilityTester *vis, Float *distance) const {
     Interaction pShape = shape->Sample(ref, u);
     pShape.mediumInterface = mediumInterface;
     *wi = Normalize(pShape.p - ref.p);
     *pdf = shape->Pdf(ref, *wi);
     *vis = VisibilityTester(ref, pShape);
+
+	// Calculate distance from sampled light point to interaction point
+	if (distance != nullptr) {
+		*distance = Distance(pShape.p, ref.p);
+	}
+
     return L(pShape, -*wi);
 }
 

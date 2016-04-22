@@ -93,7 +93,8 @@ Spectrum InfiniteAreaLight::Le(const RayDifferential &ray) const {
 
 Spectrum InfiniteAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                       Vector3f *wi, Float *pdf,
-                                      VisibilityTester *vis) const {
+                                      VisibilityTester *vis, 
+									  Float *distance) const {
     // Find $(u,v)$ sample coordinates in infinite light texture
     Float mapPdf;
     Point2f uv = distribution->SampleContinuous(u, &mapPdf);
@@ -115,6 +116,10 @@ Spectrum InfiniteAreaLight::Sample_Li(const Interaction &ref, const Point2f &u,
     // Return radiance value for infinite light direction
     *vis = VisibilityTester(ref, Interaction(ref.p + *wi * (2 * worldRadius),
                                              ref.time, mediumInterface));
+
+	// Catches attempts to calculate distance to distant light source
+	Assert(distance == nullptr);
+
     return Spectrum(Lmap->Lookup(uv), SpectrumType::Illuminant);
 }
 

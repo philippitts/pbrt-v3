@@ -58,6 +58,8 @@
 /* Using locations.  */
 #define YYLSP_NEEDED 0
 
+#define YYERROR_VERBOSE
+
 
 
 /* Tokens.  */

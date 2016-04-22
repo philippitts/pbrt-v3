@@ -38,7 +38,7 @@
 #include "paramset.h"
 
 // WhittedIntegrator Method Definitions
-Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
+IntegrationResult WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
                                Sampler &sampler, MemoryArena &arena,
                                int depth) const {
     Spectrum L(0.);
@@ -80,7 +80,7 @@ Spectrum WhittedIntegrator::Li(const RayDifferential &ray, const Scene &scene,
         L += SpecularReflect(ray, isect, scene, sampler, arena, depth);
         L += SpecularTransmit(ray, isect, scene, sampler, arena, depth);
     }
-    return L;
+    return IntegrationResult(L);
 }
 
 WhittedIntegrator *CreateWhittedIntegrator(

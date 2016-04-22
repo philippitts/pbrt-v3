@@ -52,7 +52,8 @@ class GonioPhotometricLight : public Light {
   public:
     // GonioPhotometricLight Public Methods
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
-                       Float *pdf, VisibilityTester *vis) const;
+                       Float *pdf, VisibilityTester *vis, 
+					   Float *distance = nullptr) const;
     GonioPhotometricLight(const Transform &LightToWorld,
                           const MediumInterface &mediumInterface,
                           const Spectrum &I, const std::string &texname)

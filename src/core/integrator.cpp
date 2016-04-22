@@ -84,7 +84,7 @@ Spectrum UniformSampleAllLights(const Interaction &it, const Scene &scene,
 
 Spectrum UniformSampleOneLight(const Interaction &it, const Scene &scene,
                                MemoryArena &arena, Sampler &sampler,
-                               bool handleMedia) {
+                               bool handleMedia, Float *distance) {
     ProfilePhase p(Prof::DirectLighting);
     // Randomly choose a single light to sample, _light_
     int nLights = int(scene.lights.size());
@@ -94,13 +94,15 @@ Spectrum UniformSampleOneLight(const Interaction &it, const Scene &scene,
     Point2f uLight = sampler.Get2D();
     Point2f uScattering = sampler.Get2D();
     return (Float)nLights * EstimateDirect(it, uScattering, *light, uLight,
-                                           scene, sampler, arena, handleMedia);
+                                           scene, sampler, arena, handleMedia, 
+										   false, distance);
 }
 
 Spectrum EstimateDirect(const Interaction &it, const Point2f &uScattering,
                         const Light &light, const Point2f &uLight,
                         const Scene &scene, Sampler &sampler,
-                        MemoryArena &arena, bool handleMedia, bool specular) {
+                        MemoryArena &arena, bool handleMedia, bool specular,
+						Float *distance) {
     BxDFType bsdfFlags =
         specular ? BSDF_ALL : BxDFType(BSDF_ALL & ~BSDF_SPECULAR);
     Spectrum Ld(0.f);
@@ -108,7 +110,7 @@ Spectrum EstimateDirect(const Interaction &it, const Point2f &uScattering,
     Vector3f wi;
     Float lightPdf = 0, scatteringPdf = 0;
     VisibilityTester visibility;
-    Spectrum Li = light.Sample_Li(it, uLight, &wi, &lightPdf, &visibility);
+    Spectrum Li = light.Sample_Li(it, uLight, &wi, &lightPdf, &visibility, distance);
     if (lightPdf > 0 && !Li.IsBlack()) {
         // Compute BSDF or phase function's value for light sample
         Spectrum f;
@@ -261,7 +263,7 @@ void SamplerIntegrator::Render(const Scene &scene) {
 
                     // Evaluate radiance along camera ray
                     Spectrum L(0.f);
-                    if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena);
+                    if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena).L;
 
                     // Issue warning if unexpected radiance value returned
                     if (L.HasNaNs()) {
@@ -334,7 +336,7 @@ Spectrum SamplerIntegrator::SpecularReflect(
             rd.ryDirection =
                 wi - dwody + 2.f * Vector3f(Dot(wo, ns) * dndy + dDNdy * ns);
         }
-        return f * Li(rd, scene, sampler, arena, depth + 1) * AbsDot(wi, ns) /
+        return f * Li(rd, scene, sampler, arena, depth + 1).L * AbsDot(wi, ns) /
                pdf;
     } else
         return Spectrum(0.f);
@@ -384,7 +386,7 @@ Spectrum SamplerIntegrator::SpecularTransmit(
             rd.ryDirection =
                 wi + eta * dwody - Vector3f(mu * dndy + dmudy * ns);
         }
-        L = f * Li(rd, scene, sampler, arena, depth + 1) * AbsDot(wi, ns) / pdf;
+        L = f * Li(rd, scene, sampler, arena, depth + 1).L * AbsDot(wi, ns) / pdf;
     }
     return L;
 }

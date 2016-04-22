@@ -56,7 +56,7 @@ void DirectLightingIntegrator::Preprocess(const Scene &scene,
     }
 }
 
-Spectrum DirectLightingIntegrator::Li(const RayDifferential &ray,
+IntegrationResult DirectLightingIntegrator::Li(const RayDifferential &ray,
                                       const Scene &scene, Sampler &sampler,
                                       MemoryArena &arena, int depth) const {
     ProfilePhase p(Prof::SamplerIntegratorLi);
@@ -89,7 +89,7 @@ Spectrum DirectLightingIntegrator::Li(const RayDifferential &ray,
         L += SpecularReflect(ray, isect, scene, sampler, arena, depth);
         L += SpecularTransmit(ray, isect, scene, sampler, arena, depth);
     }
-    return L;
+    return IntegrationResult(L);
 }
 
 DirectLightingIntegrator *CreateDirectLightingIntegrator(

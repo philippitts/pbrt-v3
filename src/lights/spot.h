@@ -51,7 +51,8 @@ class SpotLight : public Light {
     SpotLight(const Transform &LightToWorld, const MediumInterface &m,
               const Spectrum &I, Float totalWidth, Float falloffStart);
     Spectrum Sample_Li(const Interaction &ref, const Point2f &u, Vector3f *wi,
-                       Float *pdf, VisibilityTester *vis) const;
+                       Float *pdf, VisibilityTester *vis, 
+					   Float *distance = nullptr) const;
     Float Falloff(const Vector3f &w) const;
     Spectrum Power() const;
     Float Pdf_Li(const Interaction &, const Vector3f &) const;

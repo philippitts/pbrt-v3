@@ -47,6 +47,7 @@
 #include "reflection.h"
 #include "sampler.h"
 #include "material.h"
+#include "integrationresult.h"
 
 // Integrator Declarations
 class Integrator {
@@ -62,12 +63,12 @@ Spectrum UniformSampleAllLights(const Interaction &it, const Scene &scene,
                                 bool handleMedia = false);
 Spectrum UniformSampleOneLight(const Interaction &it, const Scene &scene,
                                MemoryArena &arena, Sampler &sampler,
-                               bool handleMedia = false);
+                               bool handleMedia = false, Float* distance = nullptr);
 Spectrum EstimateDirect(const Interaction &it, const Point2f &uShading,
                         const Light &light, const Point2f &uLight,
                         const Scene &scene, Sampler &sampler,
                         MemoryArena &arena, bool handleMedia = false,
-                        bool specular = false);
+                        bool specular = false, Float *distance = nullptr);
 std::unique_ptr<Distribution1D> ComputeLightPowerDistribution(
     const Scene &scene);
 
@@ -80,7 +81,7 @@ class SamplerIntegrator : public Integrator {
         : camera(camera), sampler(sampler) {}
     virtual void Preprocess(const Scene &scene, Sampler &sampler) {}
     void Render(const Scene &scene);
-    virtual Spectrum Li(const RayDifferential &ray, const Scene &scene,
+    virtual IntegrationResult Li(const RayDifferential &ray, const Scene &scene,
                         Sampler &sampler, MemoryArena &arena,
                         int depth = 0) const = 0;
     Spectrum SpecularReflect(const RayDifferential &ray,

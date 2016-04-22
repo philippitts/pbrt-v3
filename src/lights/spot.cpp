@@ -49,11 +49,16 @@ SpotLight::SpotLight(const Transform &LightToWorld,
       cosFalloffStart(std::cos(Radians(falloffStart))) {}
 Spectrum SpotLight::Sample_Li(const Interaction &ref, const Point2f &u,
                               Vector3f *wi, Float *pdf,
-                              VisibilityTester *vis) const {
+                              VisibilityTester *vis, Float *distance) const {
     *wi = Normalize(pLight - ref.p);
     *pdf = 1.f;
     *vis =
         VisibilityTester(ref, Interaction(pLight, ref.time, mediumInterface));
+
+	if (distance != nullptr) {
+		*distance = Distance(pLight, ref.p);
+	}
+
     return I * Falloff(-*wi) / DistanceSquared(pLight, ref.p);
 }
 

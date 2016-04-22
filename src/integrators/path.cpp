@@ -44,7 +44,7 @@ STAT_PERCENT("Integrator/Zero-radiance paths", zeroRadiancePaths, totalPaths);
 STAT_INT_DISTRIBUTION("Integrator/Path length", pathLength);
 
 // PathIntegrator Method Definitions
-Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
+IntegrationResult PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
                             Sampler &sampler, MemoryArena &arena,
                             int depth) const {
     ProfilePhase p(Prof::SamplerIntegratorLi);
@@ -141,7 +141,7 @@ Spectrum PathIntegrator::Li(const RayDifferential &r, const Scene &scene,
         }
     }
     ReportValue(pathLength, bounces);
-    return L;
+    return IntegrationResult(L);
 }
 
 PathIntegrator *CreatePathIntegrator(const ParamSet &params,
