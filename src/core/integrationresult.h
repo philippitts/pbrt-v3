@@ -26,15 +26,21 @@ Author: Phil Pitts
 
 class IntegrationResult {
 public:
-	IntegrationResult() { samples = nullptr; nSamples = 0; }
-	IntegrationResult(const IntegrationResult& src);
-	IntegrationResult(Spectrum &L);
-	IntegrationResult(Spectrum &L, std::queue<HistogramSample> &samples);
-	~IntegrationResult();
+	IntegrationResult() {}
+	IntegrationResult(const IntegrationResult& src) :
+		L(src.L),
+		histogramSamples(src.histogramSamples) {}
+	IntegrationResult(Spectrum &L) : L(L) {}
+	IntegrationResult(Spectrum &L, std::queue<HistogramSample> &samples) : L(L) {
+		histogramSamples.resize(samples.size());
+		for (size_t i = 0; !samples.empty(); i++) {
+			histogramSamples[i] = samples.front();
+			samples.pop();
+		}
+	}
 
 	Spectrum L;
-	size_t nSamples;
-	HistogramSample* samples;
+	std::vector<HistogramSample> histogramSamples;
 };
 
 

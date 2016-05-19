@@ -14,31 +14,31 @@ Author: Phil Pitts
 #pragma once
 #endif
 
-#ifndef PBRT_INTEGRATORS_TOFPATH_H
-#define PBRT_INTEGRATORS_TOFPATH_H
+#ifndef PBRT_INTEGRATORS_PATHTOF_H
+#define PBRT_INTEGRATORS_PATHTOF_H
 #include "stdafx.h"
 
-// integrators/tofpath.h*
+// integrators/pathtof.h*
 #include "pbrt.h"
 #include "integrator.h"
 
-// ToFPathIntegrator Declarations
-class ToFPathIntegrator : public SamplerIntegrator {
+// PathToFIntegrator Declarations
+class PathToFIntegrator : public SamplerIntegrator {
   public:
-    // ToFPathIntegrator Public Methods
+    // PathToFIntegrator Public Methods
     IntegrationResult Li(const RayDifferential &ray, const Scene &scene,
                 Sampler &sampler, MemoryArena &arena, int depth) const;
-	ToFPathIntegrator(int maxDepth, std::shared_ptr<const Camera> camera,
+	PathToFIntegrator(int maxDepth, std::shared_ptr<const Camera> camera,
                    std::shared_ptr<Sampler> sampler)
         : SamplerIntegrator(camera, sampler), maxDepth(maxDepth) {}
 
   private:
-    // ToFPathIntegrator Private Data
+    // PathToFIntegrator Private Data
     const int maxDepth;
 };
 
-ToFPathIntegrator *CreateToFPathIntegrator(const ParamSet &params,
+PathToFIntegrator *CreatePathToFIntegrator(const ParamSet &params,
                                      std::shared_ptr<Sampler> sampler,
                                      std::shared_ptr<const Camera> camera);
 
-#endif  // PBRT_INTEGRATORS_TOFPATH_H
+#endif  // PBRT_INTEGRATORS_PATHTOF_H

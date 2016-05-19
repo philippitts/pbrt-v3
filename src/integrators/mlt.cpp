@@ -45,6 +45,7 @@
 #include "paramset.h"
 #include "sampling.h"
 #include "progressreporter.h"
+#include "integrationresult.h"
 
 STAT_TIMER("Time/Rendering", renderingTime);
 STAT_PERCENT("Integrator/Acceptance rate", acceptedMutations, totalMutations);
@@ -230,9 +231,10 @@ void MLTIntegrator::Render(const Scene &scene) {
 
                 // Splat both current and proposed samples to _film_
                 if (accept > 0)
-                    film.AddSplat(pProposed,
-                                  LProposed * accept / LProposed.y());
-                film.AddSplat(pCurrent, LCurrent * (1 - accept) / LCurrent.y());
+                    film.AddSplat(pProposed, IntegrationResult(
+						(Spectrum)(LProposed * accept / LProposed.y())));
+                film.AddSplat(pCurrent, IntegrationResult(
+					(Spectrum)(LCurrent * (1 - accept) / LCurrent.y())));
 
                 // Accept or reject the proposal
                 if (rng.UniformFloat() < accept) {

@@ -54,7 +54,7 @@ Film::Film(const Point2i &resolution, const Bounds2f &cropWindow,
                          std::ceil(fullResolution.y * cropWindow.pMax.y)));
 
     // Allocate film image storage
-    pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
+	pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
 
     // Precompute filter weight table
     int offset = 0;
@@ -119,15 +119,15 @@ void Film::SetImage(const Spectrum *img) const {
     }
 }
 
-void Film::AddSplat(const Point2f &p, const Spectrum &v) {
-    if (v.HasNaNs()) {
+void Film::AddSplat(const Point2f &p, const IntegrationResult &v) {
+    if (v.L.HasNaNs()) {
         Warning("Film ignoring splatted spectrum with NaN values");
         return;
     }
     ProfilePhase pp(Prof::SplatFilm);
     if (!InsideExclusive((Point2i)p, croppedPixelBounds)) return;
     Float xyz[3];
-    v.ToXYZ(xyz);
+    v.L.ToXYZ(xyz);
     Pixel &pixel = GetPixel((Point2i)p);
     for (int i = 0; i < 3; ++i) pixel.splatXYZ[i].Add(xyz[i]);
 }

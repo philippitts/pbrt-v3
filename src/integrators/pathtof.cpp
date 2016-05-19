@@ -11,7 +11,7 @@ Author: Phil Pitts
 
 #include "stdafx.h"
 
-#include "integrators/tofpath.h"
+#include "integrators/pathtof.h"
 #include "scene.h"
 #include "interaction.h"
 #include "paramset.h"
@@ -25,7 +25,7 @@ STAT_PERCENT("Integrator/Zero-radiance paths", zeroRadiancePaths, totalPaths);
 STAT_INT_DISTRIBUTION("Integrator/Path length", pathLength);
 
 // ToFPathIntegrator Method Definitions
-IntegrationResult ToFPathIntegrator::Li(const RayDifferential &r, const Scene &scene,
+IntegrationResult PathToFIntegrator::Li(const RayDifferential &r, const Scene &scene,
                             Sampler &sampler, MemoryArena &arena,
                             int depth) const {
     ProfilePhase p(Prof::SamplerIntegratorLi);
@@ -34,7 +34,7 @@ IntegrationResult ToFPathIntegrator::Li(const RayDifferential &r, const Scene &s
     bool specularBounce = false;
 	Float pathLength = 0.f;
 
-	std::queue<HistogramSample> histograms;
+	std::queue<HistogramSample> histogram;
 	
     int bounces;
     for (bounces = 0;; ++bounces) {
@@ -109,17 +109,20 @@ IntegrationResult ToFPathIntegrator::Li(const RayDifferential &r, const Scene &s
 		}
 
 		// Add the histogram sample to the queue
-		histograms.push(HistogramSample(pathLength + distanceLight, directL + localIndirectL));
+		HistogramSample histSample;
+		histSample.distance = pathLength + distanceLight;
+		histSample.L = Spectrum(directL + localIndirectL).y();
+		histogram.push(HistogramSample(histSample));
 
 		indirectL += localIndirectL;
     }
     ReportValue(pathLength, bounces);
-    return IntegrationResult(Spectrum(directL + indirectL), histograms);
+    return IntegrationResult(Spectrum(directL + indirectL), histogram);
 }
 
-ToFPathIntegrator *CreateToFPathIntegrator(const ParamSet &params,
+PathToFIntegrator *CreatePathToFIntegrator(const ParamSet &params,
                                      std::shared_ptr<Sampler> sampler,
                                      std::shared_ptr<const Camera> camera) {
     int maxDepth = params.FindOneInt("maxdepth", 5);
-    return new ToFPathIntegrator(maxDepth, camera, sampler);
+    return new PathToFIntegrator(maxDepth, camera, sampler);
 }

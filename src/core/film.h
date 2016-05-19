@@ -45,6 +45,7 @@
 #include "spectrum.h"
 #include "filter.h"
 #include "stats.h"
+#include "integrationresult.h"
 
 // FilmTilePixel Declarations
 struct FilmTilePixel {
@@ -64,7 +65,7 @@ class Film {
     std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
     void MergeFilmTile(std::unique_ptr<FilmTile> tile);
     void SetImage(const Spectrum *img) const;
-    void AddSplat(const Point2f &p, const Spectrum &v);
+    void AddSplat(const Point2f &p, const IntegrationResult &v);
     void WriteImage(Float splatScale = 1);
     void Clear();
 
@@ -74,6 +75,13 @@ class Film {
     std::unique_ptr<Filter> filter;
     const std::string filename;
     Bounds2i croppedPixelBounds;
+
+protected:
+	// Film Protected Data
+	static PBRT_CONSTEXPR int filterTableWidth = 16;
+	Float filterTable[filterTableWidth * filterTableWidth];
+	std::mutex mutex;
+	const Float scale;
 
   private:
     // Film Private Data
@@ -85,10 +93,6 @@ class Film {
         Float pad;
     };
     std::unique_ptr<Pixel[]> pixels;
-    static PBRT_CONSTEXPR int filterTableWidth = 16;
-    Float filterTable[filterTableWidth * filterTableWidth];
-    std::mutex mutex;
-    const Float scale;
 
     // Film Private Methods
     Pixel &GetPixel(const Point2i &p) {
@@ -112,7 +116,7 @@ class FilmTile {
           filterTableSize(filterTableSize) {
         pixels = std::vector<FilmTilePixel>(std::max(0, pixelBounds.Area()));
     }
-    void AddSample(const Point2f &pFilm, const Spectrum &L,
+    void AddSample(const Point2f &pFilm, const IntegrationResult &integration,
                    Float sampleWeight = 1.) {
         // Compute sample's raster bounds
         Point2f pFilmDiscrete = pFilm - Vector2f(0.5f, 0.5f);
@@ -145,7 +149,7 @@ class FilmTile {
 
                 // Update pixel values with filtered sample contribution
                 FilmTilePixel &pixel = GetPixel(Point2i(x, y));
-                pixel.contribSum += L * sampleWeight * filterWeight;
+                pixel.contribSum += integration.L * sampleWeight * filterWeight;
                 pixel.filterWeightSum += filterWeight;
             }
         }
@@ -157,23 +161,19 @@ class FilmTile {
             (p.x - pixelBounds.pMin.x) + (p.y - pixelBounds.pMin.y) * width;
         return pixels[offset];
     }
-    const FilmTilePixel &GetPixel(const Point2i &p) const {
-        Assert(InsideExclusive(p, pixelBounds));
-        int width = pixelBounds.pMax.x - pixelBounds.pMin.x;
-        int offset =
-            (p.x - pixelBounds.pMin.x) + (p.y - pixelBounds.pMin.y) * width;
-        return pixels[offset];
-    }
     Bounds2i GetPixelBounds() const { return pixelBounds; }
 
-  private:
-    // FilmTile Private Data
+  protected:
+    // FilmTile Protected Data
     const Bounds2i pixelBounds;
     const Vector2f filterRadius, invFilterRadius;
     const Float *filterTable;
     const int filterTableSize;
-    std::vector<FilmTilePixel> pixels;
-    friend class Film;
+
+private:
+	// FilmTile Private Data
+	std::vector<FilmTilePixel> pixels;
+	friend class Film;
 };
 
 Film *CreateFilm(const ParamSet &params, std::unique_ptr<Filter> filter);

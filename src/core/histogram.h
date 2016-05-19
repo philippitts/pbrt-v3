@@ -22,19 +22,29 @@ Author: Phil Pitts
 #include "pbrt.h"
 #include "spectrum.h"
 
-class HistogramSample {
+class Histogram {
 public:
-	HistogramSample() {
-		distance = 0.f;
+	// Histogram Public Methods
+	Histogram() {
+		binSize = 0;
+		nContributions = 0;
+	}
+	Histogram(Float maxDistance, Float binSize) : binSize(binSize) {
+		if (binSize <= 0) Severe("Illegal histogram bin size");
+		nContributions = 0;
+		bins.resize(maxDistance / binSize);
 	}
 
-	HistogramSample(Float distance, Spectrum radiance) { 
-		this->distance = distance;
-		this->radiance = radiance; 
-	}
+	// Histogram Public Methods
+	Float binSize;
+	int nContributions;
+	std::vector<Float> bins;
 
+};
+
+struct HistogramSample {
+	Float L;
 	Float distance;
-	Spectrum radiance;
 };
 
 #endif  // PBRT_CORE_HISTOGRAM_H

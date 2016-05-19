@@ -61,7 +61,7 @@
 #include "integrators/sppm.h"
 #include "integrators/volpath.h"
 #include "integrators/whitted.h"
-#include "integrators/tofpath.h"
+#include "integrators/pathtof.h"
 #include "lights/diffuse.h"
 #include "lights/distant.h"
 #include "lights/goniometric.h"
@@ -1416,8 +1416,8 @@ Integrator *RenderOptions::MakeIntegrator() const {
         integrator = CreateMLTIntegrator(IntegratorParams, camera);
     } else if (IntegratorName == "sppm") {
         integrator = CreateSPPMIntegrator(IntegratorParams, camera);
-	} else if (IntegratorName == "tofpath") {
-		integrator = CreateToFPathIntegrator(IntegratorParams, sampler, camera);
+	} else if (IntegratorName == "pathtof") {
+		integrator = CreatePathToFIntegrator(IntegratorParams, sampler, camera);
 	} else {
         Error("Integrator \"%s\" unknown.", IntegratorName.c_str());
         return nullptr;
