@@ -22,7 +22,7 @@ Author: Phil Pitts
 #include "pbrt.h"
 #include "film.h"
 #include "histogram.h"
-#include "parallel.h"
+#include "paramset.h"
 
 // HistogramTilePixel Declarations
 class HistogramTilePixel {
@@ -97,5 +97,7 @@ private:
 		return pixels[offset];
 	}
 };
+
+HistogramFilm *CreateHistogramFilm(const ParamSet &params, std::unique_ptr<Filter> filter);
 
 #endif  // PBRT_FILMS_HISTOGRAMFILM_H

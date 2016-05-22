@@ -54,6 +54,8 @@
 #include "filters/mitchell.h"
 #include "filters/sinc.h"
 #include "filters/triangle.h"
+#include "films/histogramfilm.h"
+#include "films/groundtruth.h"
 #include "integrators/bdpt.h"
 #include "integrators/directlighting.h"
 #include "integrators/mlt.h"
@@ -62,6 +64,7 @@
 #include "integrators/volpath.h"
 #include "integrators/whitted.h"
 #include "integrators/pathtof.h"
+#include "integrators/directtof.h"
 #include "lights/diffuse.h"
 #include "lights/distant.h"
 #include "lights/goniometric.h"
@@ -716,8 +719,12 @@ std::unique_ptr<Filter> MakeFilter(const std::string &name,
 Film *MakeFilm(const std::string &name, const ParamSet &paramSet,
                std::unique_ptr<Filter> filter) {
     Film *film = nullptr;
-    if (name == "image")
-        film = CreateFilm(paramSet, std::move(filter));
+	if (name == "image")
+		film = CreateFilm(paramSet, std::move(filter));
+	else if (name == "histogram")
+		film = CreateHistogramFilm(paramSet, std::move(filter));
+	else if (name == "groundtruth")
+		film = CreateGroundTruthFilm(paramSet, std::move(filter));
     else
         Warning("Film \"%s\" unknown.", name.c_str());
     paramSet.ReportUnused();
@@ -1418,6 +1425,9 @@ Integrator *RenderOptions::MakeIntegrator() const {
         integrator = CreateSPPMIntegrator(IntegratorParams, camera);
 	} else if (IntegratorName == "pathtof") {
 		integrator = CreatePathToFIntegrator(IntegratorParams, sampler, camera);
+	}
+	else if (IntegratorName == "directtof") {
+		integrator = CreateDirectToFIntegrator(IntegratorParams, sampler, camera);
 	} else {
         Error("Integrator \"%s\" unknown.", IntegratorName.c_str());
         return nullptr;

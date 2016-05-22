@@ -10,23 +10,17 @@ Author: Phil Pitts
 
 #include "stdafx.h"
 
-#include "films/histogramfilm.h"
+#include "films/groundtruth.h"
 
-// HistogramFilm Method Definitions
-HistogramFilm::HistogramFilm(const Point2i &resolution, const Bounds2f &cropWindow,
+// GroundTruth Method Definitions
+GroundTruthFilm::GroundTruthFilm(const Point2i &resolution, const Bounds2f &cropWindow,
 	std::unique_ptr<Filter> filter, Float diagonal, const std::string &filename,
-	Float scale, Float binSize, Float maxHistogramDistance, Float minHistogramL) : 
-	Film(resolution, cropWindow, std::move(filter), diagonal, filename, scale),
-	binSize(binSize),
-	maxHistogramDistance(maxHistogramDistance),
-	minHistogramL(minHistogramL) {
+	Float scale) :
+	Film(resolution, cropWindow, std::move(filter), diagonal, filename, scale) {
 	pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
-	for (int i = 0; i < croppedPixelBounds.Area(); i++) {
-		pixels[i].Initialize(binSize, maxHistogramDistance);
-	}
 }
 
-std::unique_ptr<HistogramFilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sampleBounds) {
+std::unique_ptr<GroundTruthFilmTile> GroundTruthFilm::GetFilmTile(const Bounds2i &sampleBounds) {
 	// Bound image pixels that samples in _sampleBounds_ contribute to
 	Vector2f halfPixel = Vector2f(0.5f, 0.5f);
 	Bounds2f floatBounds = (Bounds2f)sampleBounds;
@@ -34,104 +28,79 @@ std::unique_ptr<HistogramFilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sa
 	Point2i p1 = (Point2i)Floor(floatBounds.pMax - halfPixel + filter->radius) +
 		Point2i(1, 1);
 	Bounds2i tilePixelBounds = Intersect(Bounds2i(p0, p1), croppedPixelBounds);
-	return std::unique_ptr<HistogramFilmTile>(new HistogramFilmTile(
-		tilePixelBounds, filter->radius, filterTable, filterTableWidth,
-		binSize, maxHistogramDistance));
+	return std::unique_ptr<GroundTruthFilmTile>(new GroundTruthFilmTile(
+		tilePixelBounds, filter->radius, filterTable, filterTableWidth));
 }
 
-void HistogramFilm::MergeFilmTile(std::unique_ptr<HistogramFilmTile> tile) {
+void GroundTruthFilm::MergeFilmTile(std::unique_ptr<GroundTruthFilmTile> tile) {
 	ProfilePhase p(Prof::MergeFilmTile);
 	std::lock_guard<std::mutex> lock(mutex);
 	for (Point2i pixel : tile->GetPixelBounds()) {
 		// Merge _pixel_ into _Film::pixels_
-		const HistogramTilePixel &tilePixel = tile->GetPixel(pixel);
+		const GroundTruthTilePixel &tilePixel = tile->GetPixel(pixel);
 		Pixel &mergePixel = GetPixel(pixel);
 
-		if (tilePixel.histogram.binSize != mergePixel.histogram.binSize ||
-			tilePixel.histogram.bins.size() != mergePixel.histogram.bins.size()) {
-			Severe("HistogramFilm histograms have different sizes");
-		}
-
-
-		for (size_t i = 0; i < tilePixel.histogram.bins.size(); i++) {
-			mergePixel.histogram.bins[i] += tilePixel.histogram.bins[i];
-		}
+		mergePixel.value.L += tilePixel.value.L;
+		mergePixel.value.distance += tilePixel.value.distance;
 		mergePixel.filterWeightSum += tilePixel.filterWeightSum;
 	}
 }
 
-void HistogramFilm::SetImage(const Spectrum *img) const {
-	// TODO: Stub - maybe in the future histogram images could be loaded?
+void GroundTruthFilm::SetImage(const Spectrum *img) const {
+	// TODO: Stub - maybe in the future ground truth images could be loaded?
 	// It doesn't make sense to just load radiance from images.
 }
 
-void HistogramFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
+void GroundTruthFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
 	if (v.L.HasNaNs()) {
 		Warning("Film ignoring splatted spectrum with NaN values");
 		return;
 	}
+	if (v.histogramSamples.empty()) {
+		Warning("Film ignoring splatted integration result with no samples");
+		return;
+	}
+	if (v.histogramSamples.size() > 1) {
+		Warning("Film ignoring extra values of splatted integration result");
+	}
+
 	ProfilePhase pp(Prof::SplatFilm);
 	if (!InsideExclusive((Point2i)p, croppedPixelBounds)) return;
 	Pixel &pixel = GetPixel((Point2i)p);
-	
-	size_t nBins = pixel.splatHistogram.bins.size();
-	for (auto sample : v.histogramSamples) {
-		size_t binIdx = (size_t)(sample.distance / binSize);
-		if (binIdx < nBins) {
-			pixel.splatHistogram.bins[binIdx] += sample.L;
-		}
-	}
+
+	pixel.splatValue.distance += v.histogramSamples[0].distance;
+	pixel.splatValue.L += v.histogramSamples[0].L;
 }
 
-void HistogramFilm::WriteImage(Float splatScale) {
+void GroundTruthFilm::WriteImage(Float splatScale) {
 	FILE* fp = fopen(filename.c_str(), "w");
-	if (!fp) Severe("HistogramFilm file %s could not be opened", filename);
+	if (!fp) Severe("GroundTruthFilm file %s could not be opened", filename);
 
 	for (Point2i p : croppedPixelBounds) {
 		Pixel &pixel = GetPixel(p);
-		if (binSize = pixel.histogram.binSize ||
-			pixel.histogram.binSize != pixel.splatHistogram.binSize ||
-			pixel.histogram.bins.size() != pixel.splatHistogram.bins.size()) {
-			Severe("HistogramFilm histograms have different sizes");
-		}
 
 		Float invFilterWt = 0;
-		size_t nBins = pixel.histogram.bins.size();
 		if (pixel.filterWeightSum != 0) invFilterWt = (Float)1 / pixel.filterWeightSum;
 
-		bool isFirst = true;
-		for (size_t i = 0; i < nBins; i++) {
-			Histogram& histogram = pixel.histogram;
-			Float L = histogram.bins[i] * invFilterWt;
+		Float L = pixel.value.L * invFilterWt;
+		Float distance = pixel.value.distance;
 
-			Histogram& splatHistogram = pixel.splatHistogram;
-			Float splatL = splatHistogram.bins[i] * splatScale;
-			
-			L += splatL;
-			if (L >= minHistogramL) {
-				if (isFirst) {
-					fprintf(fp, "# %d %d ", p.x, p.y);
-					isFirst = false;
-				}
-				fprintf(fp, "%f %f ", pixel.histogram.binSize * i, L);
-			}
-		}
+		L += pixel.splatValue.L * splatScale;
+		distance += pixel.splatValue.distance * splatScale;
+
+		fprintf(fp, "# %d %d %f %f ", p.x, p.y, distance, L);
 	}
 
 	fclose(fp);
 }
 
-HistogramFilmTile::HistogramFilmTile(const Bounds2i &pixelBounds, 
-	const Vector2f &filterRadius, const Float *filterTable, int filterTableSize, 
-	Float binSize, Float maxDistance)
+GroundTruthFilmTile::GroundTruthFilmTile(const Bounds2i &pixelBounds,
+	const Vector2f &filterRadius, const Float *filterTable, int filterTableSize)
 	: FilmTile(pixelBounds, filterRadius, filterTable, filterTableSize) {
-	pixels = std::vector<HistogramTilePixel>(std::max(0, pixelBounds.Area()));
-	for (int i = 0; i < pixelBounds.Area(); i++) {
-		pixels[i].Initialize(binSize, maxDistance);
-	}
+	pixels = std::vector<GroundTruthTilePixel>(std::max(0, pixelBounds.Area()));
 }
 
-void HistogramFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult &integration,
+void GroundTruthFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult &integration,
 	Float sampleWeight) {
 	// Compute sample's raster bounds
 	Point2f pFilmDiscrete = pFilm - Vector2f(0.5f, 0.5f);
@@ -162,22 +131,17 @@ void HistogramFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult 
 			int offset = ify[y - p0.y] * filterTableSize + ifx[x - p0.x];
 			Float filterWeight = filterTable[offset];
 
-			// Update pixel histogram
-			HistogramTilePixel &pixel = GetPixel(Point2i(x, y));
+			// Update pixel value
+			GroundTruthTilePixel &pixel = GetPixel(Point2i(x, y));
 			pixel.filterWeightSum += filterWeight;
 
-			int nBins = pixel.histogram.bins.size();
-			for (auto sample : integration.histogramSamples) {
-				int binIdx = (int)(sample.distance / pixel.histogram.binSize);
-				if (binIdx < nBins) {
-					pixel.histogram.bins[binIdx] += sample.L * sampleWeight * filterWeight;
-				}
-			}
+			pixel.value.distance += integration.histogramSamples[0].distance * sampleWeight;
+			pixel.value.L += integration.histogramSamples[0].L * sampleWeight * filterWeight;
 		}
 	}
 }
 
-HistogramTilePixel& HistogramFilmTile::GetPixel(const Point2i &p) {
+GroundTruthTilePixel& GroundTruthFilmTile::GetPixel(const Point2i &p) {
 	Assert(InsideExclusive(p, pixelBounds));
 	int width = pixelBounds.pMax.x - pixelBounds.pMin.x;
 	int offset =
@@ -185,7 +149,7 @@ HistogramTilePixel& HistogramFilmTile::GetPixel(const Point2i &p) {
 	return pixels[offset];
 }
 
-HistogramFilm *CreateHistogramFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
+GroundTruthFilm *CreateGroundTruthFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
 	// Intentionally use FindOneString() rather than FindOneFilename() here
 	// so that the rendered image is left in the working directory, rather
 	// than the directory the scene file lives in.
@@ -220,10 +184,7 @@ HistogramFilm *CreateHistogramFilm(const ParamSet &params, std::unique_ptr<Filte
 
 	Float scale = params.FindOneFloat("scale", 1.);
 	Float diagonal = params.FindOneFloat("diagonal", 35.);
-	Float binSize = params.FindOneFloat("binsize", 0.1);
-	Float maxHistogramDistance = params.FindOneFloat("maxhistogramdistance", 10.);
-	Float minHistogramL = params.FindOneFloat("minhistogramL", 0.0001);
 
-	return new HistogramFilm(Point2i(xres, yres), crop, std::move(filter), diagonal,
-		filename, scale, binSize, maxHistogramDistance, minHistogramL);
+	return new GroundTruthFilm(Point2i(xres, yres), crop, std::move(filter), diagonal,
+		filename, scale);
 }

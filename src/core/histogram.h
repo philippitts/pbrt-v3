@@ -25,19 +25,14 @@ Author: Phil Pitts
 class Histogram {
 public:
 	// Histogram Public Methods
-	Histogram() {
-		binSize = 0;
-		nContributions = 0;
-	}
+	Histogram() : binSize(0) { }
 	Histogram(Float maxDistance, Float binSize) : binSize(binSize) {
 		if (binSize <= 0) Severe("Illegal histogram bin size");
-		nContributions = 0;
 		bins.resize(maxDistance / binSize);
 	}
 
 	// Histogram Public Methods
 	Float binSize;
-	int nContributions;
 	std::vector<Float> bins;
 
 };

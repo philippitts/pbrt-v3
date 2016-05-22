@@ -38,6 +38,9 @@ public:
 			samples.pop();
 		}
 	}
+	IntegrationResult(Spectrum &L, HistogramSample& sample) : L(L) {
+		histogramSamples = { sample };
+	}
 
 	Spectrum L;
 	std::vector<HistogramSample> histogramSamples;

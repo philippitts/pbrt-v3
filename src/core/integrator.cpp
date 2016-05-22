@@ -54,7 +54,7 @@ Integrator::~Integrator() {}
 Spectrum UniformSampleAllLights(const Interaction &it, const Scene &scene,
                                 MemoryArena &arena, Sampler &sampler,
                                 const std::vector<int> &nLightSamples,
-                                bool handleMedia) {
+                                bool handleMedia, Float *distance) {
     ProfilePhase p(Prof::DirectLighting);
     Spectrum L(0.f);
     for (size_t j = 0; j < scene.lights.size(); ++j) {
@@ -68,15 +68,16 @@ Spectrum UniformSampleAllLights(const Interaction &it, const Scene &scene,
             Point2f uLight = sampler.Get2D();
             Point2f uScattering = sampler.Get2D();
             L += EstimateDirect(it, uScattering, *light, uLight, scene, sampler,
-                                arena, handleMedia);
+                                arena, handleMedia, false, distance);
         } else {
             // Estimate direct lighting using sample arrays
             Spectrum Ld(0.f);
             for (int k = 0; k < nSamples; ++k)
                 Ld += EstimateDirect(it, uScatteringArray[k], *light,
                                      uLightArray[k], scene, sampler, arena,
-                                     handleMedia);
+                                     handleMedia, false, distance);
             L += Ld / nSamples;
+			if (distance != nullptr) *distance /= nSamples;
         }
     }
     return L;
