@@ -27,6 +27,7 @@ Author: Phil Pitts
 struct GroundTruthTilePixel {
 	HistogramSample value;
 	Float filterWeightSum;
+	int nContribs;
 };
 
 // GroundTruthFilmTile Declarations
@@ -36,9 +37,8 @@ public:
 	GroundTruthFilmTile(const Bounds2i &pixelBounds, const Vector2f &filterRadius,
 		const Float *filterTable, int filterTableSize);
 	void AddSample(const Point2f &pFilm, const IntegrationResult &integration,
-		Float sampleWeight = 1.);
+		Float sampleWeight);
 	GroundTruthTilePixel &GetPixel(const Point2i &p);
-	Bounds2i GetPixelBounds() const { return pixelBounds; }
 
 private:
 	// GroundTruthFilmTile Private Methods
@@ -53,21 +53,26 @@ public:
 		std::unique_ptr<Filter> filter, Float diagonal,
 		const std::string &filename, Float scale);
 
-	std::unique_ptr<GroundTruthFilmTile> GetFilmTile(const Bounds2i &sampleBounds);
-	void MergeFilmTile(std::unique_ptr<GroundTruthFilmTile> tile);
+	std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
+	void MergeFilmTile(std::unique_ptr<FilmTile> tile);
 	void SetImage(const Spectrum *img) const;
 	void AddSplat(const Point2f &p, const IntegrationResult &v);
-	void WriteImage(Float splatScale = 1);
+	void WriteImage(Float splatScale);
 
 private:
 	// Film Private Data
 	class Pixel {
 	public:
-		Pixel() { filterWeightSum = 0; }
+		Pixel() { 
+			nContribs = 0;
+			filterWeightSum = 0;
+			value.distance = value.L = splatValue.distance = splatValue.L = 0;
+		}
 
 		HistogramSample value;
 		HistogramSample splatValue;
 		Float filterWeightSum;
+		int nContribs;
 	};
 	std::unique_ptr<Pixel[]> pixels;
 

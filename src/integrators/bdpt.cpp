@@ -34,7 +34,7 @@
 
 // integrators/bdpt.cpp*
 #include "integrators/bdpt.h"
-#include "film.h"
+#include "films/image.h"
 #include "sampler.h"
 #include "integrator.h"
 #include "stats.h"
@@ -305,7 +305,7 @@ void BDPTIntegrator::Render(const Scene &scene) {
                 snprintf(filename, sizeof(filename),
                          "bdpt_d%02i_s%02i_t%02i.exr", depth, s, t);
 
-                weightFilms[BufferIndex(s, t)] = std::unique_ptr<Film>(new Film(
+                weightFilms[BufferIndex(s, t)] = std::unique_ptr<Film>(new ImageFilm(
                     film->fullResolution,
                     Bounds2f(Point2f(0, 0), Point2f(1, 1)),
                     std::unique_ptr<Filter>(CreateBoxFilter(ParamSet())),

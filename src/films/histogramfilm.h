@@ -45,9 +45,8 @@ public:
 	HistogramFilmTile(const Bounds2i &pixelBounds, const Vector2f &filterRadius,
 		const Float *filterTable, int filterTableSize, Float binSize, Float maxDistance);
 	void AddSample(const Point2f &pFilm, const IntegrationResult &integration,
-		Float sampleWeight = 1.);
+		Float sampleWeight);
 	HistogramTilePixel &GetPixel(const Point2i &p);
-	Bounds2i GetPixelBounds() const { return pixelBounds; }
 
 private:
 	// HistogramFilmTile Private Methods
@@ -63,11 +62,11 @@ public:
 		const std::string &filename, Float scale, Float binSize, 
 		Float maxHistogramDistance, Float minHistogramL);
 
-	std::unique_ptr<HistogramFilmTile> GetFilmTile(const Bounds2i &sampleBounds);
-	void MergeFilmTile(std::unique_ptr<HistogramFilmTile> tile);
+	std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
+	void MergeFilmTile(std::unique_ptr<FilmTile> tile);
 	void SetImage(const Spectrum *img) const;
 	void AddSplat(const Point2f &p, const IntegrationResult &v);
-	void WriteImage(Float splatScale = 1);
+	void WriteImage(Float splatScale);
 
 private:
 	// Film Private Data

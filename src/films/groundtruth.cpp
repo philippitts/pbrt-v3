@@ -11,6 +11,7 @@ Author: Phil Pitts
 #include "stdafx.h"
 
 #include "films/groundtruth.h"
+#include "stats.h"
 
 // GroundTruth Method Definitions
 GroundTruthFilm::GroundTruthFilm(const Point2i &resolution, const Bounds2f &cropWindow,
@@ -20,7 +21,7 @@ GroundTruthFilm::GroundTruthFilm(const Point2i &resolution, const Bounds2f &crop
 	pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
 }
 
-std::unique_ptr<GroundTruthFilmTile> GroundTruthFilm::GetFilmTile(const Bounds2i &sampleBounds) {
+std::unique_ptr<FilmTile> GroundTruthFilm::GetFilmTile(const Bounds2i &sampleBounds) {
 	// Bound image pixels that samples in _sampleBounds_ contribute to
 	Vector2f halfPixel = Vector2f(0.5f, 0.5f);
 	Bounds2f floatBounds = (Bounds2f)sampleBounds;
@@ -32,17 +33,25 @@ std::unique_ptr<GroundTruthFilmTile> GroundTruthFilm::GetFilmTile(const Bounds2i
 		tilePixelBounds, filter->radius, filterTable, filterTableWidth));
 }
 
-void GroundTruthFilm::MergeFilmTile(std::unique_ptr<GroundTruthFilmTile> tile) {
+void GroundTruthFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 	ProfilePhase p(Prof::MergeFilmTile);
 	std::lock_guard<std::mutex> lock(mutex);
-	for (Point2i pixel : tile->GetPixelBounds()) {
+
+	GroundTruthFilmTile* gtTile = static_cast<GroundTruthFilmTile*>(tile.get());
+	if (gtTile == nullptr) {
+		Warning("Skipping alien film tile in MergeFilmTile");
+		return;
+	}
+
+	for (Point2i pixel : gtTile->GetPixelBounds()) {
 		// Merge _pixel_ into _Film::pixels_
-		const GroundTruthTilePixel &tilePixel = tile->GetPixel(pixel);
+		const GroundTruthTilePixel &tilePixel = gtTile->GetPixel(pixel);
 		Pixel &mergePixel = GetPixel(pixel);
 
 		mergePixel.value.L += tilePixel.value.L;
 		mergePixel.value.distance += tilePixel.value.distance;
 		mergePixel.filterWeightSum += tilePixel.filterWeightSum;
+		mergePixel.nContribs += tilePixel.nContribs;
 	}
 }
 
@@ -82,8 +91,11 @@ void GroundTruthFilm::WriteImage(Float splatScale) {
 		Float invFilterWt = 0;
 		if (pixel.filterWeightSum != 0) invFilterWt = (Float)1 / pixel.filterWeightSum;
 
+		Float invNContribs = 0;
+		if (pixel.nContribs != 0) invNContribs = (Float)1 / pixel.nContribs;
+
 		Float L = pixel.value.L * invFilterWt;
-		Float distance = pixel.value.distance;
+		Float distance = pixel.value.distance * invNContribs;
 
 		L += pixel.splatValue.L * splatScale;
 		distance += pixel.splatValue.distance * splatScale;
@@ -102,6 +114,14 @@ GroundTruthFilmTile::GroundTruthFilmTile(const Bounds2i &pixelBounds,
 
 void GroundTruthFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult &integration,
 	Float sampleWeight) {
+	if (integration.histogramSamples.empty()) {
+		Warning("Film ignoring added integration result with no samples");
+		return;
+	}
+	if (integration.histogramSamples.size() > 1) {
+		Warning("Film ignoring extra values of added integration result");
+	}
+
 	// Compute sample's raster bounds
 	Point2f pFilmDiscrete = pFilm - Vector2f(0.5f, 0.5f);
 	Point2i p0 = (Point2i)Ceil(pFilmDiscrete - filterRadius);
@@ -133,10 +153,10 @@ void GroundTruthFilmTile::AddSample(const Point2f &pFilm, const IntegrationResul
 
 			// Update pixel value
 			GroundTruthTilePixel &pixel = GetPixel(Point2i(x, y));
-			pixel.filterWeightSum += filterWeight;
-
 			pixel.value.distance += integration.histogramSamples[0].distance * sampleWeight;
 			pixel.value.L += integration.histogramSamples[0].L * sampleWeight * filterWeight;
+			pixel.filterWeightSum += filterWeight;
+			pixel.nContribs++;
 		}
 	}
 }

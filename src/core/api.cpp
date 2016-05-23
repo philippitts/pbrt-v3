@@ -54,6 +54,7 @@
 #include "filters/mitchell.h"
 #include "filters/sinc.h"
 #include "filters/triangle.h"
+#include "films/image.h"
 #include "films/histogramfilm.h"
 #include "films/groundtruth.h"
 #include "integrators/bdpt.h"
@@ -720,7 +721,7 @@ Film *MakeFilm(const std::string &name, const ParamSet &paramSet,
                std::unique_ptr<Filter> filter) {
     Film *film = nullptr;
 	if (name == "image")
-		film = CreateFilm(paramSet, std::move(filter));
+		film = CreateImageFilm(paramSet, std::move(filter));
 	else if (name == "histogram")
 		film = CreateHistogramFilm(paramSet, std::move(filter));
 	else if (name == "groundtruth")

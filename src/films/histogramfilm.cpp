@@ -11,6 +11,7 @@ Author: Phil Pitts
 #include "stdafx.h"
 
 #include "films/histogramfilm.h"
+#include "stats.h"
 
 // HistogramFilm Method Definitions
 HistogramFilm::HistogramFilm(const Point2i &resolution, const Bounds2f &cropWindow,
@@ -26,7 +27,7 @@ HistogramFilm::HistogramFilm(const Point2i &resolution, const Bounds2f &cropWind
 	}
 }
 
-std::unique_ptr<HistogramFilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sampleBounds) {
+std::unique_ptr<FilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sampleBounds) {
 	// Bound image pixels that samples in _sampleBounds_ contribute to
 	Vector2f halfPixel = Vector2f(0.5f, 0.5f);
 	Bounds2f floatBounds = (Bounds2f)sampleBounds;
@@ -39,12 +40,19 @@ std::unique_ptr<HistogramFilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sa
 		binSize, maxHistogramDistance));
 }
 
-void HistogramFilm::MergeFilmTile(std::unique_ptr<HistogramFilmTile> tile) {
+void HistogramFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 	ProfilePhase p(Prof::MergeFilmTile);
 	std::lock_guard<std::mutex> lock(mutex);
-	for (Point2i pixel : tile->GetPixelBounds()) {
+
+	HistogramFilmTile *histogramTile = static_cast<HistogramFilmTile*>(tile.get());
+	if (histogramTile == nullptr) {
+		Warning("Skipping alien film tile in MergeFilmTile");
+		return;
+	}
+
+	for (Point2i pixel : histogramTile->GetPixelBounds()) {
 		// Merge _pixel_ into _Film::pixels_
-		const HistogramTilePixel &tilePixel = tile->GetPixel(pixel);
+		const HistogramTilePixel &tilePixel = histogramTile->GetPixel(pixel);
 		Pixel &mergePixel = GetPixel(pixel);
 
 		if (tilePixel.histogram.binSize != mergePixel.histogram.binSize ||

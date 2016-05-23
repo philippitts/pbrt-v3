@@ -263,30 +263,30 @@ void SamplerIntegrator::Render(const Scene &scene) {
                     ++nCameraRays;
 
                     // Evaluate radiance along camera ray
-                    Spectrum L(0.f);
-                    if (rayWeight > 0) L = Li(ray, scene, *tileSampler, arena).L;
+					IntegrationResult result;
+                    if (rayWeight > 0) result = Li(ray, scene, *tileSampler, arena);
 
                     // Issue warning if unexpected radiance value returned
-                    if (L.HasNaNs()) {
+                    if (result.L.HasNaNs()) {
                         Error(
                             "Not-a-number radiance value returned "
                             "for image sample.  Setting to black.");
-                        L = Spectrum(0.f);
-                    } else if (L.y() < -1e-5) {
+                        result.L = Spectrum(0.f);
+                    } else if (result.L.y() < -1e-5) {
                         Error(
                             "Negative luminance value, %f, returned "
                             "for image sample.  Setting to black.",
-                            L.y());
-                        L = Spectrum(0.f);
-                    } else if (std::isinf(L.y())) {
+                            result.L.y());
+                        result.L = Spectrum(0.f);
+                    } else if (std::isinf(result.L.y())) {
                         Error(
                             "Infinite luminance value returned "
                             "for image sample.  Setting to black.");
-                        L = Spectrum(0.f);
+                        result.L = Spectrum(0.f);
                     }
 
                     // Add camera ray's contribution to image
-                    filmTile->AddSample(cameraSample.pFilm, L, rayWeight);
+                    filmTile->AddSample(cameraSample.pFilm, result, rayWeight);
 
                     // Free _MemoryArena_ memory from computing image sample
                     // value
