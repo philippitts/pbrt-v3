@@ -66,7 +66,7 @@ void GroundTruthFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
 		return;
 	}
 	if (v.histogramSamples.empty()) {
-		Warning("Film ignoring splatted integration result with no samples");
+		// Warning("Film ignoring splatted integration result with no samples");
 		return;
 	}
 	if (v.histogramSamples.size() > 1) {
@@ -115,7 +115,7 @@ GroundTruthFilmTile::GroundTruthFilmTile(const Bounds2i &pixelBounds,
 void GroundTruthFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult &integration,
 	Float sampleWeight) {
 	if (integration.histogramSamples.empty()) {
-		Warning("Film ignoring added integration result with no samples");
+		// Warning("Film ignoring added integration result with no samples");
 		return;
 	}
 	if (integration.histogramSamples.size() > 1) {
