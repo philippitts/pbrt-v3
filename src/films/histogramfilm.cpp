@@ -60,7 +60,6 @@ void HistogramFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 			Severe("HistogramFilm histograms have different sizes");
 		}
 
-
 		for (size_t i = 0; i < tilePixel.histogram.bins.size(); i++) {
 			mergePixel.histogram.bins[i] += tilePixel.histogram.bins[i];
 		}
@@ -97,7 +96,7 @@ void HistogramFilm::WriteImage(Float splatScale) {
 
 	for (Point2i p : croppedPixelBounds) {
 		Pixel &pixel = GetPixel(p);
-		if (binSize = pixel.histogram.binSize ||
+		if (binSize != pixel.histogram.binSize ||
 			pixel.histogram.binSize != pixel.splatHistogram.binSize ||
 			pixel.histogram.bins.size() != pixel.splatHistogram.bins.size()) {
 			Severe("HistogramFilm histograms have different sizes");
@@ -110,12 +109,29 @@ void HistogramFilm::WriteImage(Float splatScale) {
 		bool isFirst = true;
 		for (size_t i = 0; i < nBins; i++) {
 			Histogram& histogram = pixel.histogram;
-			Float L = histogram.bins[i] * invFilterWt;
 
-			Histogram& splatHistogram = pixel.splatHistogram;
-			Float splatL = splatHistogram.bins[i] * splatScale;
-			
-			L += splatL;
+			Float rgb[3];
+			histogram.bins[i].ToRGB(rgb);
+			if (pixel.filterWeightSum != 0) {
+				Float invWt = (Float)1 / pixel.filterWeightSum;
+				rgb[0] = std::max((Float)0, rgb[0] * invWt);
+				rgb[1] = std::max((Float)0, rgb[1] * invWt);
+				rgb[2] = std::max((Float)0, rgb[2] * invWt);
+			}
+
+			Float splatRGB[3];
+			pixel.splatHistogram.bins[i].ToRGB(splatRGB);
+
+			rgb[0] += splatScale * splatRGB[0];
+			rgb[1] += splatScale * splatRGB[1];
+			rgb[2] += splatScale * splatRGB[2];
+
+			rgb[0] *= scale;
+			rgb[1] *= scale;
+			rgb[2] *= scale;
+
+			float L = 0.212671 * rgb[0] + 0.715160 * rgb[1] + 0.072169 * rgb[2];
+
 			if (L >= minHistogramL) {
 				if (isFirst) {
 					fprintf(fp, "# %d %d ", p.x, p.y);

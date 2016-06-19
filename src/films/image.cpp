@@ -121,7 +121,7 @@ void ImageFilm::WriteImage(Float splatScale) {
             rgb[3 * offset + 2] =
                 std::max((Float)0, rgb[3 * offset + 2] * invWt);
         }
-
+		
         // Add splat value at pixel
         Float splatRGB[3];
         Float splatXYZ[3] = {pixel.splatXYZ[0], pixel.splatXYZ[1],
@@ -135,6 +135,7 @@ void ImageFilm::WriteImage(Float splatScale) {
         rgb[3 * offset] *= scale;
         rgb[3 * offset + 1] *= scale;
         rgb[3 * offset + 2] *= scale;
+
         ++offset;
     }
 

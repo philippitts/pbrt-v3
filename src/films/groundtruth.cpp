@@ -88,18 +88,35 @@ void GroundTruthFilm::WriteImage(Float splatScale) {
 	for (Point2i p : croppedPixelBounds) {
 		Pixel &pixel = GetPixel(p);
 
-		Float invFilterWt = 0;
-		if (pixel.filterWeightSum != 0) invFilterWt = (Float)1 / pixel.filterWeightSum;
+		Float rgb[3];
+		pixel.value.L.ToRGB(rgb);
+		if (pixel.filterWeightSum != 0) {
+			Float invWt = (Float)1 / pixel.filterWeightSum;
+			rgb[0] = std::max((Float)0, rgb[0] * invWt);
+			rgb[1] = std::max((Float)0, rgb[1] * invWt);
+			rgb[2] = std::max((Float)0, rgb[2] * invWt);
+		}
 
-		Float invNContribs = 0;
-		if (pixel.nContribs != 0) invNContribs = (Float)1 / pixel.nContribs;
+		Float distance = pixel.value.distance;
+		if (pixel.nContribs != 0) {
+			Float invWt = (Float)1 / pixel.nContribs;
+			distance *= invWt;
+		}
 
-		Float L = pixel.value.L * invFilterWt;
-		Float distance = pixel.value.distance * invNContribs;
+		Float splatRGB[3];
+		pixel.splatValue.L.ToRGB(splatRGB);
 
-		L += pixel.splatValue.L * splatScale;
+		rgb[0] += splatScale * splatRGB[0];
+		rgb[1] += splatScale * splatRGB[1];
+		rgb[2] += splatScale * splatRGB[2];
+
+		rgb[0] *= scale;
+		rgb[1] *= scale;
+		rgb[2] *= scale;
+
 		distance += pixel.splatValue.distance * splatScale;
 
+		float L = 0.212671 * rgb[0] + 0.715160 * rgb[1] + 0.072169 * rgb[2];
 		fprintf(fp, "# %d %d %f %f ", p.x, p.y, distance, L);
 	}
 

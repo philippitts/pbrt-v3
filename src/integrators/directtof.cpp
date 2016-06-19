@@ -61,7 +61,7 @@ IntegrationResult DirectToFIntegrator::Li(const RayDifferential &ray,
 			L += UniformSampleOneLight(isect, scene, arena, sampler, false, &lightDistance);
 		distance += lightDistance;
 	}
-	return IntegrationResult(L, HistogramSample{ L.y(), distance });
+	return IntegrationResult(L, HistogramSample(L, distance));
 }
 
 DirectToFIntegrator *CreateDirectToFIntegrator(

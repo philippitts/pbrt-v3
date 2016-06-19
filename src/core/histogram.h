@@ -26,19 +26,22 @@ class Histogram {
 public:
 	// Histogram Public Methods
 	Histogram() : binSize(0) { }
-	Histogram(Float maxDistance, Float binSize) : binSize(binSize) {
+	Histogram(Float binSize, Float maxDistance) : binSize(binSize) {
 		if (binSize <= 0) Severe("Illegal histogram bin size");
 		bins.resize(maxDistance / binSize);
 	}
 
 	// Histogram Public Methods
 	Float binSize;
-	std::vector<Float> bins;
+	std::vector<Spectrum> bins;
 
 };
 
 struct HistogramSample {
-	Float L;
+	HistogramSample() { distance = 0.f; }
+	HistogramSample(Spectrum L, Float distance) : L(L), distance(distance) { }
+
+	Spectrum L;
 	Float distance;
 };
 

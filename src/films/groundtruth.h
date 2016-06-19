@@ -66,7 +66,6 @@ private:
 		Pixel() { 
 			nContribs = 0;
 			filterWeightSum = 0;
-			value.distance = value.L = splatValue.distance = splatValue.L = 0;
 		}
 
 		HistogramSample value;
