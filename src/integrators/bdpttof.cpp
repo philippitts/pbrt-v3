@@ -98,7 +98,6 @@ void BDPTToFIntegrator::Render(const Scene &scene) {
 
 					// Execute all BDPT connection strategies
 					Spectrum L(0.f);
-					HistogramSample sample;
 					for (int t = 1; t <= nCamera; ++t) {
 						for (int s = 0; s <= nLight; ++s) {
 							int depth = t + s - 2;
@@ -109,26 +108,26 @@ void BDPTToFIntegrator::Render(const Scene &scene) {
 							// update _L_
 							Point2f pFilmNew = pFilm;
 							Float misWeight = 0.f;
-							Spectrum Lpath = ConnectBDPTToF(
+							HistogramSample sample = ConnectBDPTToF(
 								scene, lightVertices, cameraVertices, s, t,
 								*lightDistr, *camera, *tileSampler, &pFilmNew,
-								sample, &misWeight);
+								&misWeight);
 							if (visualizeStrategies || visualizeWeights) {
 								Spectrum value;
 								if (visualizeStrategies)
 									value =
-									misWeight == 0 ? 0 : Lpath / misWeight;
-								if (visualizeWeights) value = Lpath;
+									misWeight == 0 ? 0 : sample.L / misWeight;
+								if (visualizeWeights) value = sample.L;
 								weightFilms[BufferIndex(s, t)]->AddSplat(
 									pFilmNew, value);
 							}
 							if (t != 1) {
-								L += Lpath;
+								L += sample.L;
 								samples[t * (nLight + 1) + s] = sample;
 							}
 							else {
 								film->AddSplat(pFilmNew, 
-									IntegrationResult(Lpath, sample));
+									IntegrationResult(sample.L, sample));
 							}
 						}
 					}
@@ -151,22 +150,21 @@ void BDPTToFIntegrator::Render(const Scene &scene) {
 	}
 }
 
-Spectrum ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
+HistogramSample ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
 	Vertex *cameraVertices, int s, int t,
 	const Distribution1D &lightDistr, const Camera &camera,
-	Sampler &sampler, Point2f *pRaster, HistogramSample& sample,
-	Float *misWeightPtr) {
-	Spectrum L(0.f);
+	Sampler &sampler, Point2f *pRaster, Float *misWeightPtr) {
+	HistogramSample sample;
 	// Ignore invalid connections related to infinite area lights
 	if (t > 1 && s != 0 && cameraVertices[t - 1].type == VertexType::Light)
-		return Spectrum(0.f);
+		return HistogramSample();
 
 	// Perform connection and write contribution to _L_
 	Vertex sampled;
 	if (s == 0) {
 		// Interpret the camera subpath as a complete path
 		const Vertex &pt = cameraVertices[t - 1];
-		if (pt.IsLight()) L = pt.Le(scene, cameraVertices[t - 2]) * pt.beta;
+		if (pt.IsLight()) sample.L = pt.Le(scene, cameraVertices[t - 2]) * pt.beta;
 		sample.pathLength = PathLength(cameraVertices, t - 1);
 	}
 	else if (t == 1) {
@@ -181,9 +179,9 @@ Spectrum ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
 			if (pdf > 0 && !Wi.IsBlack()) {
 				// Initialize dynamically sampled vertex and _L_ for $t=1$ case
 				sampled = Vertex::CreateCamera(&camera, vis.P1(), Wi / pdf);
-				L = qs.beta * qs.f(sampled) * vis.Tr(scene, sampler) *
+				sample.L = qs.beta * qs.f(sampled) * vis.Tr(scene, sampler) *
 					sampled.beta;
-				if (qs.IsOnSurface()) L *= AbsDot(wi, qs.ns());
+				if (qs.IsOnSurface()) sample.L *= AbsDot(wi, qs.ns());
 				sample.pathLength = PathLength(lightVertices, s - 1);
 				sample.pathLength += Distance(qs.p(), sampled.p());
 			}
@@ -207,10 +205,10 @@ Spectrum ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
 				sampled =
 					Vertex::CreateLight(ei, lightWeight / (pdf * lightPdf), 0);
 				sampled.pdfFwd = sampled.PdfLightOrigin(scene, pt, lightDistr);
-				L = pt.beta * pt.f(sampled) * sampled.beta;
-				if (pt.IsOnSurface()) L *= AbsDot(wi, pt.ns());
+				sample.L = pt.beta * pt.f(sampled) * sampled.beta;
+				if (pt.IsOnSurface()) sample.L *= AbsDot(wi, pt.ns());
 				// Only check visibility if the path would carry radiance.
-				if (!L.IsBlack()) L *= vis.Tr(scene, sampler);
+				if (!sample.L.IsBlack()) sample.L *= vis.Tr(scene, sampler);
 				sample.pathLength = PathLength(cameraVertices, t - 1);
 				sample.pathLength += Distance(pt.p(), sampled.p());
 			}
@@ -220,8 +218,8 @@ Spectrum ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
 		// Handle all other bidirectional connection cases
 		const Vertex &qs = lightVertices[s - 1], &pt = cameraVertices[t - 1];
 		if (qs.IsConnectible() && pt.IsConnectible()) {
-			L = qs.beta * qs.f(pt) * pt.f(qs) * pt.beta;
-			if (!L.IsBlack()) L *= G(scene, sampler, qs, pt);
+			sample.L = qs.beta * qs.f(pt) * pt.f(qs) * pt.beta;
+			if (!sample.L.IsBlack()) sample.L *= G(scene, sampler, qs, pt);
 			sample.pathLength = Distance(qs.p(), pt.p());
 			sample.pathLength += PathLength(cameraVertices, t - 1);
 			sample.pathLength += PathLength(lightVertices, s - 1);
@@ -229,17 +227,16 @@ Spectrum ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
 	}
 
 	++totalPaths;
-	if (L.IsBlack()) ++zeroRadiancePaths;
+	if (sample.L.IsBlack()) ++zeroRadiancePaths;
 	ReportValue(bounces, s + t - 2);
 
 	// Compute MIS weight for connection strategy
 	Float misWeight =
-		L.IsBlack() ? 0.f : MISWeight(scene, lightVertices, cameraVertices,
+		sample.L.IsBlack() ? 0.f : MISWeight(scene, lightVertices, cameraVertices,
 			sampled, s, t, lightDistr);
-	L *= misWeight;
+	sample.L *= misWeight;
 	if (misWeightPtr) *misWeightPtr = misWeight;
-	sample.L = L;
-	return L;
+	return sample;
 }
 
 Float PathLength(Vertex* vertices, int lastIndex) {

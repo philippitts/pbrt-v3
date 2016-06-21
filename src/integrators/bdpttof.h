@@ -46,11 +46,10 @@ private:
 	const bool visualizeWeights;
 };
 
-Spectrum ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
+HistogramSample ConnectBDPTToF(const Scene &scene, Vertex *lightVertices,
 	Vertex *cameraVertices, int s, int t,
 	const Distribution1D &lightDistr, const Camera &camera,
-	Sampler &sampler, Point2f *pRaster, HistogramSample& sample,
-	Float *misWeight = nullptr);
+	Sampler &sampler, Point2f *pRaster, Float *misWeight = nullptr);
 
 Float PathLength(Vertex* vertices, int lastIndex);
 

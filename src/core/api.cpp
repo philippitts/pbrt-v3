@@ -67,6 +67,7 @@
 #include "integrators/pathtof.h"
 #include "integrators/directtof.h"
 #include "integrators/bdpttof.h"
+#include "integrators/mlttof.h"
 #include "lights/diffuse.h"
 #include "lights/distant.h"
 #include "lights/goniometric.h"
@@ -1433,6 +1434,9 @@ Integrator *RenderOptions::MakeIntegrator() const {
 	}
 	else if (IntegratorName == "bdpttof") {
 		integrator = CreateBDPTToFIntegrator(IntegratorParams, sampler, camera);
+	}
+	else if (IntegratorName == "mlttof") {
+		integrator = CreateMLTToFIntegrator(IntegratorParams, camera);
 	}
 	else {
         Error("Integrator \"%s\" unknown.", IntegratorName.c_str());

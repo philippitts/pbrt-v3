@@ -38,8 +38,9 @@ public:
 };
 
 struct HistogramSample {
-	HistogramSample() { pathLength = 0.f; }
+	HistogramSample() : L(0.f), pathLength(0.f) { }
 	HistogramSample(Spectrum L, Float pathLength) : L(L), pathLength(pathLength) { }
+	HistogramSample(const HistogramSample& m) : L(m.L), pathLength(m.pathLength) { }
 
 	Spectrum L;
 	Float pathLength;
