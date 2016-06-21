@@ -42,15 +42,15 @@ Spectrum GonioPhotometricLight::Sample_Li(const Interaction &ref,
                                           const Point2f &u, Vector3f *wi,
                                           Float *pdf,
                                           VisibilityTester *vis, 
-										  Float *distance) const {
+										  Float *pathLength) const {
     *wi = Normalize(pLight - ref.p);
     *pdf = 1.f;
     *vis =
         VisibilityTester(ref, Interaction(pLight, ref.time, mediumInterface));
 
 	// Calculate distance from light to interaction point
-	if (distance != nullptr) {
-		*distance = Distance(pLight, ref.p);
+	if (pathLength != nullptr) {
+		*pathLength = Distance(pLight, ref.p);
 	}
 
     return I * Scale(-*wi) / DistanceSquared(pLight, ref.p);

@@ -16,14 +16,14 @@ Author: Phil Pitts
 // HistogramFilm Method Definitions
 HistogramFilm::HistogramFilm(const Point2i &resolution, const Bounds2f &cropWindow,
 	std::unique_ptr<Filter> filter, Float diagonal, const std::string &filename,
-	Float scale, Float binSize, Float maxHistogramDistance, Float minHistogramL) : 
+	Float scale, Float binSize, Float maxPathLength, Float minL) : 
 	Film(resolution, cropWindow, std::move(filter), diagonal, filename, scale),
 	binSize(binSize),
-	maxHistogramDistance(maxHistogramDistance),
-	minHistogramL(minHistogramL) {
+	maxPathLength(maxPathLength),
+	minL(minL) {
 	pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
 	for (int i = 0; i < croppedPixelBounds.Area(); i++) {
-		pixels[i].Initialize(binSize, maxHistogramDistance);
+		pixels[i].Initialize(binSize, maxPathLength);
 	}
 }
 
@@ -37,7 +37,7 @@ std::unique_ptr<FilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sampleBound
 	Bounds2i tilePixelBounds = Intersect(Bounds2i(p0, p1), croppedPixelBounds);
 	return std::unique_ptr<HistogramFilmTile>(new HistogramFilmTile(
 		tilePixelBounds, filter->radius, filterTable, filterTableWidth,
-		binSize, maxHistogramDistance));
+		binSize, maxPathLength));
 }
 
 void HistogramFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
@@ -83,7 +83,7 @@ void HistogramFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
 	
 	size_t nBins = pixel.splatHistogram.bins.size();
 	for (auto sample : v.histogramSamples) {
-		size_t binIdx = (size_t)(sample.distance / binSize);
+		size_t binIdx = (size_t)(sample.pathLength / binSize);
 		if (binIdx < nBins) {
 			pixel.splatHistogram.bins[binIdx] += sample.L;
 		}
@@ -132,7 +132,7 @@ void HistogramFilm::WriteImage(Float splatScale) {
 
 			float L = 0.212671 * rgb[0] + 0.715160 * rgb[1] + 0.072169 * rgb[2];
 
-			if (L >= minHistogramL) {
+			if (L >= minL) {
 				if (isFirst) {
 					fprintf(fp, "# %d %d ", p.x, p.y);
 					isFirst = false;
@@ -147,11 +147,11 @@ void HistogramFilm::WriteImage(Float splatScale) {
 
 HistogramFilmTile::HistogramFilmTile(const Bounds2i &pixelBounds, 
 	const Vector2f &filterRadius, const Float *filterTable, int filterTableSize, 
-	Float binSize, Float maxDistance)
+	Float binSize, Float maxPathLength)
 	: FilmTile(pixelBounds, filterRadius, filterTable, filterTableSize) {
 	pixels = std::vector<HistogramTilePixel>(std::max(0, pixelBounds.Area()));
 	for (int i = 0; i < pixelBounds.Area(); i++) {
-		pixels[i].Initialize(binSize, maxDistance);
+		pixels[i].Initialize(binSize, maxPathLength);
 	}
 }
 
@@ -192,7 +192,7 @@ void HistogramFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult 
 
 			int nBins = pixel.histogram.bins.size();
 			for (auto sample : integration.histogramSamples) {
-				int binIdx = (int)(sample.distance / pixel.histogram.binSize);
+				int binIdx = (int)(sample.pathLength / pixel.histogram.binSize);
 				if (binIdx < nBins) {
 					pixel.histogram.bins[binIdx] += sample.L * sampleWeight * filterWeight;
 				}
@@ -245,9 +245,9 @@ HistogramFilm *CreateHistogramFilm(const ParamSet &params, std::unique_ptr<Filte
 	Float scale = params.FindOneFloat("scale", 1.);
 	Float diagonal = params.FindOneFloat("diagonal", 35.);
 	Float binSize = params.FindOneFloat("binsize", 0.1);
-	Float maxHistogramDistance = params.FindOneFloat("maxhistogramdistance", 10.);
-	Float minHistogramL = params.FindOneFloat("minhistogramL", 0.0001);
+	Float maxPathLength = params.FindOneFloat("maxpathlength", 10.);
+	Float minL = params.FindOneFloat("minL", 0.0001);
 
 	return new HistogramFilm(Point2i(xres, yres), crop, std::move(filter), diagonal,
-		filename, scale, binSize, maxHistogramDistance, minHistogramL);
+		filename, scale, binSize, maxPathLength, minL);
 }

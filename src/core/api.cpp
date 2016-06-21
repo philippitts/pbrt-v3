@@ -66,6 +66,7 @@
 #include "integrators/whitted.h"
 #include "integrators/pathtof.h"
 #include "integrators/directtof.h"
+#include "integrators/bdpttof.h"
 #include "lights/diffuse.h"
 #include "lights/distant.h"
 #include "lights/goniometric.h"
@@ -1429,7 +1430,11 @@ Integrator *RenderOptions::MakeIntegrator() const {
 	}
 	else if (IntegratorName == "directtof") {
 		integrator = CreateDirectToFIntegrator(IntegratorParams, sampler, camera);
-	} else {
+	}
+	else if (IntegratorName == "bdpttof") {
+		integrator = CreateBDPTToFIntegrator(IntegratorParams, sampler, camera);
+	}
+	else {
         Error("Integrator \"%s\" unknown.", IntegratorName.c_str());
         return nullptr;
     }

@@ -43,7 +43,7 @@ IntegrationResult DirectToFIntegrator::Li(const RayDifferential &ray,
 	}
 
 	// Compute distance from camera to surface interaction
-	Float distance = Distance(ray.o, isect.p);
+	Float pathLength = Distance(ray.o, isect.p);
 	// Compute scattering functions for surface interaction
 	isect.ComputeScatteringFunctions(ray, arena);
 	if (!isect.bsdf)
@@ -59,9 +59,9 @@ IntegrationResult DirectToFIntegrator::Li(const RayDifferential &ray,
 				nLightSamples, false, &lightDistance);
 		else
 			L += UniformSampleOneLight(isect, scene, arena, sampler, false, &lightDistance);
-		distance += lightDistance;
+		pathLength += lightDistance;
 	}
-	return IntegrationResult(L, HistogramSample(L, distance));
+	return IntegrationResult(L, HistogramSample(L, pathLength));
 }
 
 DirectToFIntegrator *CreateDirectToFIntegrator(

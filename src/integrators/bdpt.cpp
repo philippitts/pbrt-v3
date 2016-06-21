@@ -272,11 +272,6 @@ Float MISWeight(const Scene &scene, Vertex *lightVertices,
 }
 
 // BDPT Method Definitions
-inline int BufferIndex(int s, int t) {
-    int above = s + t - 2;
-    return s + above * (5 + above) / 2;
-}
-
 void BDPTIntegrator::Render(const Scene &scene) {
     ProfilePhase p(Prof::IntegratorRender);
     // Compute _lightDistr_ for sampling lights proportional to power

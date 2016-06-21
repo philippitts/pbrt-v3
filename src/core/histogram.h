@@ -26,9 +26,9 @@ class Histogram {
 public:
 	// Histogram Public Methods
 	Histogram() : binSize(0) { }
-	Histogram(Float binSize, Float maxDistance) : binSize(binSize) {
+	Histogram(Float binSize, Float maxPathLength) : binSize(binSize) {
 		if (binSize <= 0) Severe("Illegal histogram bin size");
-		bins.resize(maxDistance / binSize);
+		bins.resize(maxPathLength / binSize);
 	}
 
 	// Histogram Public Methods
@@ -38,11 +38,11 @@ public:
 };
 
 struct HistogramSample {
-	HistogramSample() { distance = 0.f; }
-	HistogramSample(Spectrum L, Float distance) : L(L), distance(distance) { }
+	HistogramSample() { pathLength = 0.f; }
+	HistogramSample(Spectrum L, Float pathLength) : L(L), pathLength(pathLength) { }
 
 	Spectrum L;
-	Float distance;
+	Float pathLength;
 };
 
 #endif  // PBRT_CORE_HISTOGRAM_H

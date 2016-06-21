@@ -123,8 +123,8 @@ class TabulatedBSSRDF : public SeparableBSSRDF {
         for (int c = 0; c < Spectrum::nSamples; ++c)
             rho[c] = sigma_t[c] != 0 ? (sigma_s[c] / sigma_t[c]) : 0;
     }
-    Spectrum Sr(Float distance) const;
-    Float Pdf_Sr(int ch, Float distance) const;
+    Spectrum Sr(Float pathLength) const;
+    Float Pdf_Sr(int ch, Float pathLength) const;
     Float Sample_Sr(int ch, Float sample) const;
 
   private:

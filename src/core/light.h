@@ -81,7 +81,7 @@ class Light {
     virtual Spectrum Sample_Li(const Interaction &ref, const Point2f &u,
                                Vector3f *wi, Float *pdf,
                                VisibilityTester *vis, 
-							   Float *distance = nullptr) const = 0;
+							   Float *pathLength = nullptr) const = 0;
     virtual Spectrum Power() const = 0;
     virtual void Preprocess(const Scene &scene) {}
     virtual Spectrum Le(const RayDifferential &r) const;

@@ -128,7 +128,7 @@ class BDPTIntegrator : public Integrator {
           visualizeWeights(visualizeWeights) {}
     void Render(const Scene &scene);
 
-  private:
+  protected:
     // BDPTIntegrator Private Data
     std::shared_ptr<Sampler> sampler;
     std::shared_ptr<const Camera> camera;
@@ -437,5 +437,18 @@ inline Vertex Vertex::CreateLight(const EndpointInteraction &ei,
     v.pdfFwd = pdf;
     return v;
 }
+
+// Utility Functions
+inline int BufferIndex(int s, int t) {
+	int above = s + t - 2;
+	return s + above * (5 + above) / 2;
+}
+
+Spectrum G(const Scene &scene, Sampler &sampler, const Vertex &v0,
+	const Vertex &v1);
+
+Float MISWeight(const Scene &scene, Vertex *lightVertices,
+	Vertex *cameraVertices, Vertex &sampled, int s, int t,
+	const Distribution1D &lightPdf);
 
 #endif  // PBRT_INTEGRATORS_BDPT_H

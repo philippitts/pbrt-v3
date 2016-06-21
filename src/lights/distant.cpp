@@ -46,7 +46,7 @@ DistantLight::DistantLight(const Transform &LightToWorld, const Spectrum &L,
 Spectrum DistantLight::Sample_Li(const Interaction &ref, const Point2f &u,
                                  Vector3f *wi, Float *pdf,
                                  VisibilityTester *vis, 
-								 Float *distance) const {
+								 Float *pathLength) const {
     *wi = wLight;
     *pdf = 1;
     Point3f pOutside = ref.p + wLight * (2 * worldRadius);
@@ -54,7 +54,7 @@ Spectrum DistantLight::Sample_Li(const Interaction &ref, const Point2f &u,
         VisibilityTester(ref, Interaction(pOutside, ref.time, mediumInterface));
 
 	// Catches attempts to calculate distance to distant light source
-	Assert(distance == nullptr);
+	Assert(pathLength == nullptr);
     
 	return L;
 }

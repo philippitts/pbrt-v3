@@ -100,18 +100,18 @@ class RNG {
     int64_t operator-(const RNG &other) const {
         Assert(inc == other.inc);
         uint64_t cur_mult = PCG32_MULT, cur_plus = inc, cur_state = other.state,
-                 the_bit = 1u, distance = 0u;
+                 the_bit = 1u, pathLength = 0u;
         while (state != cur_state) {
             if ((state & the_bit) != (cur_state & the_bit)) {
                 cur_state = cur_state * cur_mult + cur_plus;
-                distance |= the_bit;
+                pathLength |= the_bit;
             }
             Assert((state & the_bit) == (cur_state & the_bit));
             the_bit <<= 1;
             cur_plus = (cur_mult + 1ULL) * cur_plus;
             cur_mult *= cur_mult;
         }
-        return (int64_t)distance;
+        return (int64_t)pathLength;
     }
 
   private:

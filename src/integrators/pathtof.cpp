@@ -70,7 +70,7 @@ IntegrationResult PathToFIntegrator::Li(const RayDifferential &r, const Scene &s
             continue;
         }
 
-		Float distanceLight;
+		Float lightPathLength;
 
         // Sample illumination from lights to find path contribution.
         // (But skip this for perfectly specular BSDFs.)
@@ -78,7 +78,7 @@ IntegrationResult PathToFIntegrator::Li(const RayDifferential &r, const Scene &s
             0) {
             ++totalPaths;
             Spectrum Ld =
-                beta * UniformSampleOneLight(isect, scene, arena, sampler, false, &distanceLight);
+                beta * UniformSampleOneLight(isect, scene, arena, sampler, false, &lightPathLength);
             if (Ld.IsBlack()) ++zeroRadiancePaths;
             Assert(Ld.y() >= 0.f);
 			localIndirectL += Ld;
@@ -110,7 +110,7 @@ IntegrationResult PathToFIntegrator::Li(const RayDifferential &r, const Scene &s
 
 		// Add the histogram sample to the queue
 		HistogramSample histSample;
-		histSample.distance = pathLength + distanceLight;
+		histSample.pathLength = pathLength + lightPathLength;
 		histSample.L = Spectrum(directL + localIndirectL).y();
 		histogram.push(HistogramSample(histSample));
 

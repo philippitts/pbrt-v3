@@ -29,8 +29,8 @@ class HistogramTilePixel {
 public:
 	// HistogramTilePixel Public Methods
 	HistogramTilePixel() { filterWeightSum = 0; }
-	void Initialize(Float binSize, Float maxDistance) {
-		histogram = Histogram(binSize, maxDistance);
+	void Initialize(Float binSize, Float maxPathLength) {
+		histogram = Histogram(binSize, maxPathLength);
 	}
 
 	// HistogramTilePixel Public Members
@@ -60,7 +60,7 @@ public:
 	HistogramFilm(const Point2i &resolution, const Bounds2f &cropWindow,
 		std::unique_ptr<Filter> filter, Float diagonal,
 		const std::string &filename, Float scale, Float binSize, 
-		Float maxHistogramDistance, Float minHistogramL);
+		Float maxPathLength, Float minL);
 
 	std::unique_ptr<FilmTile> GetFilmTile(const Bounds2i &sampleBounds);
 	void MergeFilmTile(std::unique_ptr<FilmTile> tile);
@@ -73,9 +73,9 @@ private:
 	class Pixel {
 	public:
 		Pixel() { filterWeightSum = 0; }
-		void Initialize(Float binSize, Float maxDistance) {
-			histogram = Histogram(binSize, maxDistance);
-			splatHistogram = Histogram(binSize, maxDistance);
+		void Initialize(Float binSize, Float maxPathLength) {
+			histogram = Histogram(binSize, maxPathLength);
+			splatHistogram = Histogram(binSize, maxPathLength);
 		}
 		
 		Histogram histogram;
@@ -83,9 +83,9 @@ private:
 		Float filterWeightSum;
 	};
 	std::unique_ptr<Pixel[]> pixels;
-	Float minHistogramL;
+	Float minL;
 	Float binSize;
-	Float maxHistogramDistance;
+	Float maxPathLength;
 
 	// Film Private Methods
 	Pixel &GetPixel(const Point2i &p) {

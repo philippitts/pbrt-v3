@@ -31,6 +31,8 @@ public:
 		L(src.L),
 		histogramSamples(src.histogramSamples) {}
 	IntegrationResult(Spectrum &L) : L(L) {}
+	IntegrationResult(Spectrum &L, std::vector<HistogramSample> &samples)
+		: L(L), histogramSamples(samples) {}
 	IntegrationResult(Spectrum &L, std::queue<HistogramSample> &samples) : L(L) {
 		histogramSamples.resize(samples.size());
 		for (size_t i = 0; !samples.empty(); i++) {

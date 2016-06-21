@@ -49,7 +49,7 @@ void GroundTruthFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 		Pixel &mergePixel = GetPixel(pixel);
 
 		mergePixel.value.L += tilePixel.value.L;
-		mergePixel.value.distance += tilePixel.value.distance;
+		mergePixel.value.pathLength += tilePixel.value.pathLength;
 		mergePixel.filterWeightSum += tilePixel.filterWeightSum;
 		mergePixel.nContribs += tilePixel.nContribs;
 	}
@@ -77,7 +77,7 @@ void GroundTruthFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
 	if (!InsideExclusive((Point2i)p, croppedPixelBounds)) return;
 	Pixel &pixel = GetPixel((Point2i)p);
 
-	pixel.splatValue.distance += v.histogramSamples[0].distance;
+	pixel.splatValue.pathLength += v.histogramSamples[0].pathLength;
 	pixel.splatValue.L += v.histogramSamples[0].L;
 }
 
@@ -97,10 +97,10 @@ void GroundTruthFilm::WriteImage(Float splatScale) {
 			rgb[2] = std::max((Float)0, rgb[2] * invWt);
 		}
 
-		Float distance = pixel.value.distance;
+		Float pathLength = pixel.value.pathLength;
 		if (pixel.nContribs != 0) {
 			Float invWt = (Float)1 / pixel.nContribs;
-			distance *= invWt;
+			pathLength *= invWt;
 		}
 
 		Float splatRGB[3];
@@ -114,10 +114,10 @@ void GroundTruthFilm::WriteImage(Float splatScale) {
 		rgb[1] *= scale;
 		rgb[2] *= scale;
 
-		distance += pixel.splatValue.distance * splatScale;
+		pathLength += pixel.splatValue.pathLength * splatScale;
 
 		float L = 0.212671 * rgb[0] + 0.715160 * rgb[1] + 0.072169 * rgb[2];
-		fprintf(fp, "# %d %d %f %f ", p.x, p.y, distance, L);
+		fprintf(fp, "# %d %d %f %f ", p.x, p.y, pathLength, L);
 	}
 
 	fclose(fp);
@@ -170,7 +170,7 @@ void GroundTruthFilmTile::AddSample(const Point2f &pFilm, const IntegrationResul
 
 			// Update pixel value
 			GroundTruthTilePixel &pixel = GetPixel(Point2i(x, y));
-			pixel.value.distance += integration.histogramSamples[0].distance * sampleWeight;
+			pixel.value.pathLength += integration.histogramSamples[0].pathLength * sampleWeight;
 			pixel.value.L += integration.histogramSamples[0].L * sampleWeight * filterWeight;
 			pixel.filterWeightSum += filterWeight;
 			pixel.nContribs++;
