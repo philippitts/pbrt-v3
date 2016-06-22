@@ -219,6 +219,7 @@ FILE ( GLOB PBRT_SOURCE
   src/shapes/*.cpp
   src/textures/*.cpp
   src/media/*.cpp
+  src/films/*.cpp
   )
 
 INCLUDE_DIRECTORIES ( src )
