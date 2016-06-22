@@ -1,0 +1,34 @@
+LookAt 2 2 2 0 0.5 1 0 0 1
+Camera "perspective" "float fov" [60]
+
+Integrator "bdpttof"
+	"integer maxdepth" [5]
+
+Film "histogram"
+	"string filename" ["output/corner_bdpttof.dat"]
+	"integer xresolution" [100]
+	"integer yresolution" [100]
+	"float minL" [0]
+	"float maxpathlength" [20.]
+	"float binsize" [0.1]
+
+Sampler "lowdiscrepancy" "integer pixelsamples" [128]
+
+WorldBegin
+
+AttributeBegin
+	LightSource "point"
+		"point from" [2 2 2]
+		"spectrum I" [620 0 630 .5 632 1 634 .5 644 0]
+		"spectrum scale" [400 20 1000 20]
+AttributeEnd
+
+AttributeBegin
+	Material "uber"
+		"spectrum Kd" [ 400 1 1000 1 ]
+		"spectrum Ks" [ 400 0 1000 0 ]
+		"spectrum Kr" [ 400 0 1000 0 ]
+	Include "geometry/room_geometry.pbrt"
+AttributeEnd
+
+WorldEnd
