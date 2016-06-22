@@ -10,24 +10,23 @@ Author: Phil Pitts
 
 #include "stdafx.h"
 
-#include "films/histogramfilm.h"
+#include "films/signal.h"
 #include "stats.h"
 
-// HistogramFilm Method Definitions
-HistogramFilm::HistogramFilm(const Point2i &resolution, const Bounds2f &cropWindow,
+// SignalFilm Method Definitions
+SignalFilm::SignalFilm(const Point2i &resolution, const Bounds2f &cropWindow,
 	std::unique_ptr<Filter> filter, Float diagonal, const std::string &filename,
-	Float scale, Float binSize, Float maxPathLength, Float minL) : 
+	Float scale, std::vector<Float>& frequencies, std::vector<Float>& phases) :
 	Film(resolution, cropWindow, std::move(filter), diagonal, filename, scale),
-	binSize(binSize),
-	maxPathLength(maxPathLength),
-	minL(minL) {
+	frequencies(frequencies),
+	phases(phases) {
 	pixels = std::unique_ptr<Pixel[]>(new Pixel[croppedPixelBounds.Area()]);
 	for (int i = 0; i < croppedPixelBounds.Area(); i++) {
-		pixels[i].Initialize(binSize, maxPathLength);
+		pixels[i].Initialize(frequencies.size(), phases.size());
 	}
 }
 
-std::unique_ptr<FilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sampleBounds) {
+std::unique_ptr<FilmTile> SignalFilm::GetFilmTile(const Bounds2i &sampleBounds) {
 	// Bound image pixels that samples in _sampleBounds_ contribute to
 	Vector2f halfPixel = Vector2f(0.5f, 0.5f);
 	Bounds2f floatBounds = (Bounds2f)sampleBounds;
@@ -35,44 +34,44 @@ std::unique_ptr<FilmTile> HistogramFilm::GetFilmTile(const Bounds2i &sampleBound
 	Point2i p1 = (Point2i)Floor(floatBounds.pMax - halfPixel + filter->radius) +
 		Point2i(1, 1);
 	Bounds2i tilePixelBounds = Intersect(Bounds2i(p0, p1), croppedPixelBounds);
-	return std::unique_ptr<HistogramFilmTile>(new HistogramFilmTile(
+	return std::unique_ptr<SignalFilmTile>(new SignalFilmTile(
 		tilePixelBounds, filter->radius, filterTable, filterTableWidth,
-		binSize, maxPathLength));
+		frequencies, phases));
 }
 
-void HistogramFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
+void SignalFilm::MergeFilmTile(std::unique_ptr<FilmTile> tile) {
 	ProfilePhase p(Prof::MergeFilmTile);
 	std::lock_guard<std::mutex> lock(mutex);
 
-	HistogramFilmTile *histogramTile = static_cast<HistogramFilmTile*>(tile.get());
-	if (histogramTile == nullptr) {
+	SignalFilmTile *signalTile = static_cast<SignalFilmTile*>(tile.get());
+	if (signalTile == nullptr) {
 		Warning("Skipping alien film tile in MergeFilmTile");
 		return;
 	}
 
-	for (Point2i pixel : histogramTile->GetPixelBounds()) {
+	for (Point2i pixel : signalTile->GetPixelBounds()) {
 		// Merge _pixel_ into _Film::pixels_
-		const HistogramTilePixel &tilePixel = histogramTile->GetPixel(pixel);
+		const SignalTilePixel &tilePixel = signalTile->GetPixel(pixel);
 		Pixel &mergePixel = GetPixel(pixel);
 
-		if (tilePixel.histogram.binSize != mergePixel.histogram.binSize ||
-			tilePixel.histogram.bins.size() != mergePixel.histogram.bins.size()) {
-			Severe("HistogramFilm histograms have different sizes");
+		if (tilePixel.values.size() != mergePixel.values.size()) {
+			Severe("SignalFilm value buffers are different sizes");
 		}
 
-		for (size_t i = 0; i < tilePixel.histogram.bins.size(); ++i) {
-			mergePixel.histogram.bins[i] += tilePixel.histogram.bins[i];
+		for (size_t i = 0; i < tilePixel.values.size(); ++i) {
+			mergePixel.values[i] += tilePixel.values[i];
 		}
+
 		mergePixel.filterWeightSum += tilePixel.filterWeightSum;
 	}
 }
 
-void HistogramFilm::SetImage(const Spectrum *img) const {
+void SignalFilm::SetImage(const Spectrum *img) const {
 	// TODO: Stub - maybe in the future histogram images could be loaded?
 	// It doesn't make sense to just load radiance from images.
 }
 
-void HistogramFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
+void SignalFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
 	if (v.L.HasNaNs()) {
 		Warning("Film ignoring splatted spectrum with NaN values");
 		return;
@@ -80,83 +79,58 @@ void HistogramFilm::AddSplat(const Point2f &p, const IntegrationResult &v) {
 	ProfilePhase pp(Prof::SplatFilm);
 	if (!InsideExclusive((Point2i)p, croppedPixelBounds)) return;
 	Pixel &pixel = GetPixel((Point2i)p);
-	
-	size_t nBins = pixel.splatHistogram.bins.size();
+
 	for (auto sample : v.histogramSamples) {
-		size_t binIdx = (size_t)(sample.pathLength / binSize);
-		if (binIdx < nBins) {
-			pixel.splatHistogram.bins[binIdx] += sample.L;
+		for (size_t i = 0; i < frequencies.size(); ++i) {
+			for (size_t j = 0; j < phases.size(); ++j) {
+				float kernel = 
+					GetKernel(frequencies[i], phases[j], sample.pathLength);
+				size_t idx = i * phases.size() + j;
+				pixel.splatValues[idx] += sample.L.y() * kernel;
+			}
 		}
 	}
 }
 
-void HistogramFilm::WriteImage(Float splatScale) {
+void SignalFilm::WriteImage(Float splatScale) {
 	FILE* fp = fopen(filename.c_str(), "w");
-	if (!fp) Severe("HistogramFilm file %s could not be opened", filename);
+	if (!fp) Severe("SignalFilm file %s could not be opened", filename);
 
 	for (Point2i p : croppedPixelBounds) {
 		Pixel &pixel = GetPixel(p);
-		if (binSize != pixel.histogram.binSize ||
-			pixel.histogram.binSize != pixel.splatHistogram.binSize ||
-			pixel.histogram.bins.size() != pixel.splatHistogram.bins.size()) {
-			Severe("HistogramFilm histograms have different sizes");
+		if (pixel.splatValues.size() != pixel.values.size()) {
+			Severe("SignalFilm value buffers are different sizes");
 		}
 
-		Float invFilterWt = 0;
-		size_t nBins = pixel.histogram.bins.size();
-		if (pixel.filterWeightSum != 0) invFilterWt = (Float)1 / pixel.filterWeightSum;
-
-		bool isFirst = true;
-		for (size_t i = 0; i < nBins; ++i) {
-			Histogram& histogram = pixel.histogram;
-
-			Float rgb[3];
-			histogram.bins[i].ToRGB(rgb);
+		Float invWt = 0.f;
+		for (size_t i = 0; i < pixel.values.size(); ++i) {
 			if (pixel.filterWeightSum != 0) {
-				Float invWt = (Float)1 / pixel.filterWeightSum;
-				rgb[0] = std::max((Float)0, rgb[0] * invWt);
-				rgb[1] = std::max((Float)0, rgb[1] * invWt);
-				rgb[2] = std::max((Float)0, rgb[2] * invWt);
+				invWt = (Float)1 / pixel.filterWeightSum;
+				pixel.values[i] *= invWt;
 			}
 
-			Float splatRGB[3];
-			pixel.splatHistogram.bins[i].ToRGB(splatRGB);
+			pixel.values[i] += splatScale * pixel.splatValues[i];
+			pixel.values[i] *= scale;
 
-			rgb[0] += splatScale * splatRGB[0];
-			rgb[1] += splatScale * splatRGB[1];
-			rgb[2] += splatScale * splatRGB[2];
-
-			rgb[0] *= scale;
-			rgb[1] *= scale;
-			rgb[2] *= scale;
-
-			float L = 0.212671 * rgb[0] + 0.715160 * rgb[1] + 0.072169 * rgb[2];
-
-			if (L >= minL) {
-				if (isFirst) {
-					fprintf(fp, "# %d %d ", p.x, p.y);
-					isFirst = false;
-				}
-				fprintf(fp, "%f %f ", pixel.histogram.binSize * i, L);
-			}
+			fprintf(fp, "%f ", pixel.values[i]);
 		}
 	}
-
 	fclose(fp);
 }
 
-HistogramFilmTile::HistogramFilmTile(const Bounds2i &pixelBounds, 
-	const Vector2f &filterRadius, const Float *filterTable, int filterTableSize, 
-	Float binSize, Float maxPathLength)
-	: FilmTile(pixelBounds, filterRadius, filterTable, filterTableSize) {
-	pixels = std::vector<HistogramTilePixel>(std::max(0, pixelBounds.Area()));
-	for (int i = 0; i < pixelBounds.Area(); ++i) {
-		pixels[i].Initialize(binSize, maxPathLength);
+SignalFilmTile::SignalFilmTile(const Bounds2i &pixelBounds,
+	const Vector2f &filterRadius, const Float *filterTable, int filterTableSize,
+	std::vector<Float>& frequencies, std::vector<Float>& phases)
+	: FilmTile(pixelBounds, filterRadius, filterTable, filterTableSize),
+	frequencies(frequencies), phases(phases) {
+	pixels = std::vector<SignalTilePixel>(std::max(0, pixelBounds.Area()));
+	for (int i = 0; i < pixelBounds.Area(); i++) {
+		pixels[i].Initialize(frequencies.size(), phases.size());
 	}
 }
 
-void HistogramFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult &integration,
-	Float sampleWeight) {
+void SignalFilmTile::AddSample(const Point2f &pFilm, 
+	const IntegrationResult &integration, Float sampleWeight) {
 	// Compute sample's raster bounds
 	Point2f pFilmDiscrete = pFilm - Vector2f(0.5f, 0.5f);
 	Point2i p0 = (Point2i)Ceil(pFilmDiscrete - filterRadius);
@@ -187,21 +161,24 @@ void HistogramFilmTile::AddSample(const Point2f &pFilm, const IntegrationResult 
 			Float filterWeight = filterTable[offset];
 
 			// Update pixel histogram
-			HistogramTilePixel &pixel = GetPixel(Point2i(x, y));
+			SignalTilePixel &pixel = GetPixel(Point2i(x, y));
 			pixel.filterWeightSum += filterWeight;
 
-			int nBins = pixel.histogram.bins.size();
 			for (auto sample : integration.histogramSamples) {
-				int binIdx = (int)(sample.pathLength / pixel.histogram.binSize);
-				if (binIdx < nBins) {
-					pixel.histogram.bins[binIdx] += sample.L * sampleWeight * filterWeight;
+				for (size_t i = 0; i < frequencies.size(); ++i) {
+					for (size_t j = 0; j < phases.size(); ++j) {
+						float kernel =
+							GetKernel(frequencies[i], phases[j], sample.pathLength);
+						size_t idx = i * phases.size() + j;
+						pixel.values[idx] += sample.L.y() * kernel;
+					}
 				}
 			}
 		}
 	}
 }
 
-HistogramTilePixel& HistogramFilmTile::GetPixel(const Point2i &p) {
+SignalTilePixel& SignalFilmTile::GetPixel(const Point2i &p) {
 	Assert(InsideExclusive(p, pixelBounds));
 	int width = pixelBounds.pMax.x - pixelBounds.pMin.x;
 	int offset =
@@ -209,7 +186,7 @@ HistogramTilePixel& HistogramFilmTile::GetPixel(const Point2i &p) {
 	return pixels[offset];
 }
 
-HistogramFilm *CreateHistogramFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
+SignalFilm *CreateSignalFilm(const ParamSet &params, std::unique_ptr<Filter> filter) {
 	// Intentionally use FindOneString() rather than FindOneFilename() here
 	// so that the rendered image is left in the working directory, rather
 	// than the directory the scene file lives in.
@@ -244,10 +221,17 @@ HistogramFilm *CreateHistogramFilm(const ParamSet &params, std::unique_ptr<Filte
 
 	Float scale = params.FindOneFloat("scale", 1.);
 	Float diagonal = params.FindOneFloat("diagonal", 35.);
-	Float binSize = params.FindOneFloat("binsize", 0.1);
-	Float maxPathLength = params.FindOneFloat("maxpathlength", 10.);
-	Float minL = params.FindOneFloat("minL", 0.0001);
 
-	return new HistogramFilm(Point2i(xres, yres), crop, std::move(filter), diagonal,
-		filename, scale, binSize, maxPathLength, minL);
+	int freqi;
+	std::vector<Float> frequencies;
+	const Float *freq = params.FindFloat("frequencies", &freqi);
+	if (freq && freqi != 0) frequencies = std::vector<Float>(freq, freq + freqi);
+
+	int pi;
+	std::vector<Float> phases;
+	const Float *p = params.FindFloat("phases", &pi);
+	if (p && pi != 0) phases = std::vector<Float>(p, p + pi);
+
+	return new SignalFilm(Point2i(xres, yres), crop, std::move(filter), diagonal,
+		filename, scale, frequencies, phases);
 }

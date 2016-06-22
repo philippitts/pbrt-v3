@@ -57,6 +57,7 @@
 #include "films/image.h"
 #include "films/histogramfilm.h"
 #include "films/groundtruth.h"
+#include "films/signal.h"
 #include "integrators/bdpt.h"
 #include "integrators/directlighting.h"
 #include "integrators/mlt.h"
@@ -728,6 +729,8 @@ Film *MakeFilm(const std::string &name, const ParamSet &paramSet,
 		film = CreateHistogramFilm(paramSet, std::move(filter));
 	else if (name == "groundtruth")
 		film = CreateGroundTruthFilm(paramSet, std::move(filter));
+	else if (name == "signal")
+		film = CreateSignalFilm(paramSet, std::move(filter));
     else
         Warning("Film \"%s\" unknown.", name.c_str());
     paramSet.ReportUnused();

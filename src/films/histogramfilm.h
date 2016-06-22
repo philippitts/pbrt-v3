@@ -28,7 +28,7 @@ Author: Phil Pitts
 class HistogramTilePixel {
 public:
 	// HistogramTilePixel Public Methods
-	HistogramTilePixel() { filterWeightSum = 0; }
+	HistogramTilePixel() { filterWeightSum = 0.f; }
 	void Initialize(Float binSize, Float maxPathLength) {
 		histogram = Histogram(binSize, maxPathLength);
 	}
