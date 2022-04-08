@@ -1,0 +1,73 @@
+#===================================================
+# 10		// number of steps (outputs)
+# 0.1 1	// interpolate steps along these values
+# 400 1000	// wavelengths to capture
+# 50		// x-coordinates of histogram pixels
+# 50		// y-coordinates of histogram pixels
+#===================================================
+
+LookAt 2 2 2 0 0.5 1 0 0 1
+Camera "perspective" "float fov" [60]
+
+Renderer "sampler"
+#---
+
+#Film "histogram"
+#	"string filename" ["C:/Users/Phil/Desktop/Code/Output/corner_batch/images/output/corner_batch_3.txt"]
+#	"integer xresolution" [100]
+#	"integer yresolution" [100]
+#	"float minimumL" [0]
+#	"float range" [15]
+#	"float binsize" [0.01]
+#---
+
+Film "image"
+	"string filename" ["C:/Users/Phil/Desktop/Code/Output/corner_batch/images/output/corner_batch_3.exr"]
+	"integer xresolution" [100]
+	"integer yresolution" [100]
+#---
+
+#SurfaceIntegrator "tofpath"
+#	"float lambdamax" [1000.0]
+#	"float lambdamin" [400.0]
+#	"integer maxdepth" [5]
+#---
+
+SurfaceIntegrator "tofbipath"
+	"float lambdamax" [1000.0]
+	"float lambdamin" [400.0]
+	"integer maxdepth" [5]
+#---
+
+#SurfaceIntegrator "path" "integer maxdepth" [5]
+#---
+
+#Sampler "subrange"
+#	"integer pixelsamples" [8192]
+#	"integer xcoordinates" [50 ]
+#	"integer ycoordinates" [50 ]
+#---
+
+Sampler "lowdiscrepancy" "integer pixelsamples" [128]
+#---
+
+
+WorldBegin
+
+AttributeBegin
+	LightSource "point"
+		"point from" [2 2 2]
+		"spectrum I" [620 0 630 .5 632 1 634 .5 644 0]
+		"spectrum scale" [400 20 1000 20]
+AttributeEnd
+
+AttributeBegin
+	Material "uber" 
+		"spectrum Kd" [ 400 0.4 1000 0.4 ]
+		"spectrum Ks" [ 400 0 1000 0 ]
+		"spectrum Kr" [ 400 0 1000 0 ]
+	Include "geometry/room_geometry.pbrt"	
+AttributeEnd
+
+WorldEnd
+
